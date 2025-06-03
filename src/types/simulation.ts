@@ -44,3 +44,31 @@ export interface SimulationValidationResult {
   isValid: boolean;
   errors: string[];
 }
+
+// API related types for simulation service
+export interface CreateSimulationRequest {
+  scenario: string;
+  config?: SimulationConfig;
+}
+
+export interface CreateSimulationResponse {
+  id: string;
+  status: SimulationStatus;
+  createdAt: string;
+}
+
+export interface SimulationResult {
+  id: string;
+  scenario: string;
+  status: SimulationStatus;
+  logs: LogEntry[];
+  metrics?: SimulationMetrics;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface SimulationStatus {
+  status: "pending" | "running" | "completed" | "failed";
+  progress?: number;
+  message?: string;
+}
