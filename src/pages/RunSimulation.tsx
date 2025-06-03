@@ -1,131 +1,211 @@
 
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Play, Square, RotateCcw, Settings } from "lucide-react";
+import { Play, Square, RotateCcw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import LogConsole from "@/components/LogConsole";
+
+interface LogEntry {
+  timestamp: string;
+  agent: "Red" | "Blue" | "System";
+  action: string;
+  outcome: string;
+}
 
 const RunSimulation = () => {
-  const runningSimulations = [
-    { id: 1, name: "Adversarial Training Scenario #234", status: "Running", progress: 67, duration: "15:32" },
-    { id: 2, name: "Defense Stress Test #445", status: "Running", progress: 23, duration: "5:12" },
-    { id: 3, name: "Multi-Agent Coordination Test", status: "Queued", progress: 0, duration: "0:00" },
+  const { toast } = useToast();
+  const [selectedScenario, setSelectedScenario] = useState("");
+  const [isRunning, setIsRunning] = useState(false);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sample scenarios (would normally come from saved configurations)
+  const scenarios = [
+    "Hospital Network Security Assessment",
+    "Emergency Response System Test",
+    "Patient Data Protection Scenario",
+    "Medical Device Network Penetration Test",
+    "Pharmacy System Security Evaluation"
   ];
+
+  // Sample log data for simulation
+  const sampleLogs: Omit<LogEntry, 'timestamp'>[] = [
+    { agent: "System", action: "Simulation initialized", outcome: "Ready" },
+    { agent: "Red", action: "Network reconnaissance", outcome: "Discovered 15 active hosts" },
+    { agent: "Blue", action: "Anomaly detection activated", outcome: "Monitoring network traffic" },
+    { agent: "Red", action: "Port scanning target", outcome: "Found open ports 22, 80, 443" },
+    { agent: "Blue", action: "Port scan detected", outcome: "Alert triggered" },
+    { agent: "Red", action: "SQL injection attempt", outcome: "Vulnerability exploited" },
+    { agent: "Blue", action: "Database monitoring", outcome: "Suspicious queries detected" },
+    { agent: "Red", action: "Privilege escalation", outcome: "Admin access gained" },
+    { agent: "Blue", action: "User behavior analysis", outcome: "Unusual activity flagged" },
+    { agent: "Red", action: "Data exfiltration", outcome: "Patient records accessed" },
+    { agent: "Blue", action: "Data loss prevention", outcome: "Transfer blocked" },
+    { agent: "Red", action: "Lateral movement", outcome: "Accessed medical devices" },
+    { agent: "Blue", action: "Network segmentation", outcome: "Critical systems isolated" },
+    { agent: "System", action: "Simulation completed", outcome: "Report generated" }
+  ];
+
+  const startSimulation = () => {
+    if (!selectedScenario) {
+      toast({
+        title: "Scenario Required",
+        description: "Please select a scenario before running the simulation",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsRunning(true);
+    setLogs([]);
+    
+    toast({
+      title: "Simulation Started",
+      description: `Running scenario: ${selectedScenario}`,
+    });
+
+    // Simulate streaming logs
+    let logIndex = 0;
+    intervalRef.current = setInterval(() => {
+      if (logIndex < sampleLogs.length) {
+        const newLog: LogEntry = {
+          ...sampleLogs[logIndex],
+          timestamp: new Date().toLocaleTimeString()
+        };
+        
+        setLogs(prevLogs => [...prevLogs, newLog]);
+        logIndex++;
+      } else {
+        // Simulation complete
+        setIsRunning(false);
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+        toast({
+          title: "Simulation Complete",
+          description: "The adversarial simulation has finished successfully",
+        });
+      }
+    }, 1500); // Add a new log every 1.5 seconds
+  };
+
+  const stopSimulation = () => {
+    setIsRunning(false);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    toast({
+      title: "Simulation Stopped",
+      description: "The simulation has been manually stopped",
+      variant: "destructive",
+    });
+  };
+
+  const resetSimulation = () => {
+    setIsRunning(false);
+    setLogs([]);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    toast({
+      title: "Simulation Reset",
+      description: "Ready to run a new simulation",
+    });
+  };
+
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Run Simulation</h1>
-          <p className="text-gray-600 mt-2">Execute and monitor adversarial AI simulations</p>
-        </div>
-        <Button className="flex items-center gap-2">
-          <Play className="h-4 w-4" />
-          New Simulation
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Run Simulation</h1>
+        <p className="text-gray-600 mt-2">Execute adversarial AI simulations against your infrastructure</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Active Simulations</CardTitle>
-            <CardDescription>Currently running and queued simulations</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {runningSimulations.map((sim) => (
-              <div key={sim.id} className="p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-medium">{sim.name}</h3>
-                  <Badge 
-                    variant={sim.status === "Running" ? "default" : "secondary"}
-                    className={sim.status === "Running" ? "bg-green-100 text-green-800" : ""}
-                  >
-                    {sim.status}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-                  <span>Duration: {sim.duration}</span>
-                  <span>Progress: {sim.progress}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                  <div 
-                    className="bg-blue-500 h-2 rounded-full transition-all"
-                    style={{ width: `${sim.progress}%` }}
-                  ></div>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline">
-                    <Square className="h-3 w-3 mr-1" />
-                    Stop
-                  </Button>
-                  <Button size="sm" variant="outline">
-                    <Settings className="h-3 w-3 mr-1" />
-                    Configure
-                  </Button>
-                </div>
+      {/* Configuration Panel */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Simulation Configuration</CardTitle>
+          <CardDescription>Select and configure your simulation scenario</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Scenario</label>
+              <Select value={selectedScenario} onValueChange={setSelectedScenario}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a simulation scenario" />
+                </SelectTrigger>
+                <SelectContent>
+                  {scenarios.map((scenario) => (
+                    <SelectItem key={scenario} value={scenario}>
+                      {scenario}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Status</label>
+              <div className="flex items-center gap-2 pt-2">
+                <Badge variant={isRunning ? "default" : "secondary"}>
+                  {isRunning ? "Running" : "Ready"}
+                </Badge>
+                {selectedScenario && (
+                  <span className="text-sm text-gray-600">
+                    {selectedScenario}
+                  </span>
+                )}
               </div>
-            ))}
-          </CardContent>
-        </Card>
+            </div>
+          </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Common simulation tasks</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button className="w-full justify-start">
-                <Play className="h-4 w-4 mr-2" />
-                Start Standard Test
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Restart Last Simulation
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Settings className="h-4 w-4 mr-2" />
-                Custom Configuration
-              </Button>
-            </CardContent>
-          </Card>
+          {/* Control Buttons */}
+          <div className="flex gap-3 pt-4">
+            <Button 
+              onClick={startSimulation} 
+              disabled={isRunning || !selectedScenario}
+              size="lg"
+              className="flex-1 md:flex-none"
+            >
+              <Play className="h-5 w-5 mr-2" />
+              {isRunning ? "Simulation Running..." : "Run Simulation"}
+            </Button>
+            
+            <Button 
+              onClick={stopSimulation} 
+              disabled={!isRunning}
+              variant="destructive"
+            >
+              <Square className="h-4 w-4 mr-2" />
+              Stop
+            </Button>
+            
+            <Button 
+              onClick={resetSimulation} 
+              disabled={isRunning}
+              variant="outline"
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Reset
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>System Resources</CardTitle>
-              <CardDescription>Current usage and availability</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>CPU Usage</span>
-                  <span>72%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: "72%" }}></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Memory</span>
-                  <span>45%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full" style={{ width: "45%" }}></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Network</span>
-                  <span>28%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-purple-500 h-2 rounded-full" style={{ width: "28%" }}></div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      {/* Live Log Console */}
+      <LogConsole logs={logs} isRunning={isRunning} />
     </div>
   );
 };
