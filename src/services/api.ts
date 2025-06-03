@@ -1,4 +1,4 @@
-import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+
 import { environment } from '../utils/environment';
 import { logger } from '../utils/logger';
 
@@ -14,8 +14,12 @@ export class ApiError extends Error {
   }
 }
 
-interface RequestOptions extends AxiosRequestConfig {
+interface RequestOptions {
   requestId?: string;
+  method?: string;
+  headers?: Record<string, string>;
+  data?: any;
+  signal?: AbortSignal;
 }
 
 // Store cancellation tokens for request cancellation
@@ -46,17 +50,11 @@ class ApiClient {
   private baseURL: string;
   private defaultTimeout: number;
   private maxRetries: number;
-  private instance: AxiosInstance;
 
   constructor() {
     this.baseURL = environment.apiBaseUrl;
     this.defaultTimeout = 10000;
     this.maxRetries = environment.retryAttempts;
-
-    this.instance = axios.create({
-      baseURL: this.baseURL,
-      timeout: this.defaultTimeout,
-    });
     
     logger.info('API Client initialized', 'ApiClient', {
       baseURL: this.baseURL,
@@ -65,35 +63,36 @@ class ApiClient {
     });
   }
 
-  private shouldRetry(error: AxiosError, attempt: number): boolean {
+  private shouldRetry(error: any, attempt: number): boolean {
     if (attempt > this.maxRetries) {
       return false;
     }
 
-    if (error.response?.status === 429) {
+    if (error.status === 429) {
       // Retry after a delay if rate limited
       return true;
     }
 
-    if (error.code === 'ECONNABORTED') {
-      // Retry if request timed out
-      return true;
+    if (error.name === 'AbortError') {
+      // Don't retry aborted requests
+      return false;
     }
 
-    return false;
+    // Retry on network errors or server errors
+    return error.status >= 500 || !error.status;
   }
 
   private async makeRequest<T>(
     url: string,
     options: RequestOptions = {}
   ): Promise<T> {
-    const { requestId, ...axiosOptions } = options;
+    const { requestId, method = 'GET', headers = {}, data, ...fetchOptions } = options;
     const fullUrl = url.startsWith('http') ? url : `${this.baseURL}${url}`;
     const startTime = performance.now();
     
-    logger.apiRequest(axiosOptions.method || 'GET', fullUrl, axiosOptions.data);
+    logger.apiRequest(method, fullUrl, data);
 
-    const attempt = axiosOptions.headers?.['x-retry-attempt'] ? parseInt(axiosOptions.headers['x-retry-attempt'] as string, 10) : 0;
+    const attempt = headers['x-retry-attempt'] ? parseInt(headers['x-retry-attempt'], 10) : 0;
     const abortController = new AbortController();
 
     if (requestId) {
@@ -101,47 +100,58 @@ class ApiClient {
     }
 
     try {
-      const response: AxiosResponse<T> = await this.instance(fullUrl, {
-        ...axiosOptions,
-        signal: abortController.signal,
+      const response = await fetch(fullUrl, {
+        method,
         headers: {
           'Content-Type': 'application/json',
-          ...(axiosOptions.headers || {}),
+          ...headers,
         },
+        body: data ? JSON.stringify(data) : undefined,
+        signal: abortController.signal,
+        ...fetchOptions,
       });
 
       const duration = performance.now() - startTime;
-      logger.performance(`API ${axiosOptions.method || 'GET'} ${url}`, duration, 'API');
+      logger.performance(`API ${method} ${url}`, duration, 'API');
 
-      logger.apiResponse(axiosOptions.method || 'GET', fullUrl, response.status, response.data);
-      return response.data;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const apiError = new ApiError(
+          errorData.message || `HTTP ${response.status}`,
+          response.status,
+          errorData
+        );
+        throw apiError;
+      }
+
+      const responseData = await response.json();
+      logger.apiResponse(method, fullUrl, response.status, responseData);
+      return responseData;
     } catch (error: any) {
-      const axiosError = error as AxiosError;
-
-      if (this.shouldRetry(axiosError, attempt)) {
+      if (this.shouldRetry(error, attempt)) {
         const delayTime = attempt * 1000;
         logger.warn(`Retrying request to ${fullUrl} in ${delayTime}ms (attempt ${attempt + 1})`, 'API', {
-          status: axiosError.response?.status,
-          message: axiosError.message,
+          status: error.status,
+          message: error.message,
         });
 
         await new Promise(resolve => setTimeout(resolve, delayTime));
 
         return this.makeRequest(url, {
-          ...axiosOptions,
+          ...options,
           headers: {
-            ...axiosOptions.headers,
-            'x-retry-attempt': attempt + 1,
+            ...headers,
+            'x-retry-attempt': (attempt + 1).toString(),
           },
         });
       }
 
-      const apiError = new ApiError(
-        axiosError.message || 'Request failed',
-        axiosError.response?.status,
-        axiosError.response?.data
+      const apiError = error instanceof ApiError ? error : new ApiError(
+        error.message || 'Request failed',
+        error.status,
+        error
       );
-      logger.apiError(axiosOptions.method || 'GET', fullUrl, apiError);
+      logger.apiError(method, fullUrl, apiError);
       throw apiError;
     } finally {
       if (requestId) {
