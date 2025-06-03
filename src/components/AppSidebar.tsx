@@ -6,7 +6,8 @@ import {
   FileText, 
   Users, 
   Wrench, 
-  Activity 
+  Activity,
+  Home
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -64,6 +65,26 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-gray-200">
       <SidebarContent className="bg-white">
+        {/* Back to Home Section */}
+        <SidebarGroup className="border-b border-gray-100 pb-4">
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  asChild 
+                  className="px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-all duration-200"
+                >
+                  <Link to="/" className="flex items-center gap-3">
+                    <Home className="h-5 w-5" />
+                    <span className="font-medium">Back to Home</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Main Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-gray-500 font-medium px-3 py-2">
             Navigation
