@@ -2,14 +2,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AgentBadge } from "@/components/ui/agent-badge";
+import { LiveIndicator } from "@/components/ui/live-indicator";
 import { useEffect, useRef } from "react";
-
-interface LogEntry {
-  timestamp: string;
-  agent: "Red" | "Blue" | "System";
-  action: string;
-  outcome: string;
-}
+import { OUTCOME_INDICATORS } from "@/constants/simulation";
+import { SimulationLogic } from "@/services/simulationLogic";
+import type { LogEntry, AgentType } from "@/types/simulation";
 
 interface LogConsoleProps {
   logs: LogEntry[];
@@ -19,7 +17,6 @@ interface LogConsoleProps {
 const LogConsole = ({ logs, isRunning }: LogConsoleProps) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new logs are added
   useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -29,35 +26,9 @@ const LogConsole = ({ logs, isRunning }: LogConsoleProps) => {
     }
   }, [logs]);
 
-  const getAgentColor = (agent: string) => {
-    switch (agent) {
-      case "Red":
-        return "bg-red-100 text-red-800 border-red-200";
-      case "Blue":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      case "System":
-        return "bg-gray-100 text-gray-800 border-gray-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
-
-  const getOutcomeColor = (outcome: string, agent: string) => {
-    // Determine if outcome is positive or negative based on context
-    const positiveKeywords = ["blocked", "detected", "prevented", "isolated", "ready", "complete"];
-    const negativeKeywords = ["exploited", "gained", "accessed", "compromised"];
-    
-    const isPositive = positiveKeywords.some(keyword => 
-      outcome.toLowerCase().includes(keyword)
-    );
-    const isNegative = negativeKeywords.some(keyword => 
-      outcome.toLowerCase().includes(keyword)
-    );
-
-    if (agent === "Red" && isNegative) {
-      return "text-red-600";
-    } else if (agent === "Blue" && isPositive) {
-      return "text-green-600";
+  const getOutcomeColor = (outcome: string, agent: AgentType): string => {
+    if (SimulationLogic.isOutcomePositive(outcome, agent)) {
+      return agent === "Red" ? "text-red-600" : "text-green-600";
     } else if (agent === "System") {
       return "text-gray-600";
     }
@@ -73,12 +44,7 @@ const LogConsole = ({ logs, isRunning }: LogConsoleProps) => {
             <CardDescription>Real-time log output from the running simulation</CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {isRunning && (
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm text-green-600 font-medium">Live</span>
-              </div>
-            )}
+            <LiveIndicator isLive={isRunning} />
             <Badge variant="outline">
               {logs.length} entries
             </Badge>
@@ -99,12 +65,7 @@ const LogConsole = ({ logs, isRunning }: LogConsoleProps) => {
                     <span className="text-gray-400 text-xs min-w-[80px]">
                       {log.timestamp}
                     </span>
-                    <Badge 
-                      variant="outline" 
-                      className={`min-w-[80px] justify-center text-xs ${getAgentColor(log.agent)}`}
-                    >
-                      {log.agent}
-                    </Badge>
+                    <AgentBadge agent={log.agent} />
                     <div className="flex-1 min-w-0">
                       <div className="text-white text-xs mb-1">
                         {log.action}

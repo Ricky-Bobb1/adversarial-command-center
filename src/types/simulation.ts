@@ -1,54 +1,46 @@
 
-export interface SimulationResult {
-  id: string;
-  name: string;
-  description?: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+export interface LogEntry {
+  timestamp: string;
+  agent: "Red" | "Blue" | "System";
+  action: string;
+  outcome: string;
+}
+
+export interface SimulationConfig {
   scenario: string;
-  agents: string[];
-  network_nodes: string[];
-  results?: {
-    summary: string;
-    vulnerabilities_found: number;
-    attacks_successful: number;
-    defenses_triggered: number;
-    duration_seconds: number;
-  };
-  logs: Array<{
-    timestamp: string;
-    agent_id: string;
-    action: string;
-    outcome: string;
-    severity: 'info' | 'warning' | 'error';
-  }>;
-  created_at: string;
-  updated_at: string;
-  completed_at?: string;
+  duration?: number;
+  intensity?: "low" | "medium" | "high";
 }
 
-export interface SimulationStatus {
-  id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  progress_percentage: number;
-  current_phase: string;
-  estimated_completion?: string;
-  error_message?: string;
+export interface SimulationMetrics {
+  totalLogs: number;
+  redActions: number;
+  blueActions: number;
+  systemEvents: number;
+  duration: number;
+  successfulBlocks: number;
+  successfulAttacks: number;
 }
 
-export interface CreateSimulationRequest {
-  name: string;
-  description?: string;
-  scenario: string;
-  agent_ids: string[];
-  network_node_ids: string[];
-  config?: {
-    duration_limit?: number;
-    auto_stop_conditions?: string[];
-  };
+export interface SimulationState {
+  isRunning: boolean;
+  logs: LogEntry[];
+  selectedScenario: string;
+  scenarios: string[];
+  isLoadingScenarios: boolean;
+  error: string | null;
+  metrics?: SimulationMetrics;
 }
 
-export interface CreateSimulationResponse {
-  id: string;
-  status: SimulationStatus['status'];
-  message: string;
+export type AgentType = "Red" | "Blue" | "System";
+
+export interface SimulationLogTemplate {
+  agent: AgentType;
+  action: string;
+  outcome: string;
+}
+
+export interface SimulationValidationResult {
+  isValid: boolean;
+  errors: string[];
 }

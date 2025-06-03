@@ -1,8 +1,9 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Play, Square, RotateCcw } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { validateScenario } from "@/utils/validation";
 import ScenarioSelector from "./ScenarioSelector";
 
 interface SimulationControlsProps {
@@ -24,6 +25,9 @@ const SimulationControls = ({
   onStop,
   onReset
 }: SimulationControlsProps) => {
+  const scenarioValidation = validateScenario(selectedScenario);
+  const canStart = !isRunning && scenarioValidation.isValid;
+
   return (
     <Card>
       <CardHeader>
@@ -41,9 +45,11 @@ const SimulationControls = ({
           <div className="space-y-2">
             <label className="text-sm font-medium">Status</label>
             <div className="flex items-center gap-2 pt-2">
-              <Badge variant={isRunning ? "default" : "secondary"}>
-                {isRunning ? "Running" : "Ready"}
-              </Badge>
+              <StatusBadge 
+                isActive={isRunning}
+                activeText="Running"
+                inactiveText="Ready"
+              />
               {selectedScenario && (
                 <span className="text-sm text-gray-600">
                   {selectedScenario}
@@ -53,11 +59,10 @@ const SimulationControls = ({
           </div>
         </div>
 
-        {/* Control Buttons */}
         <div className="flex gap-3 pt-4">
           <Button 
             onClick={onStart} 
-            disabled={isRunning || !selectedScenario}
+            disabled={!canStart}
             size="lg"
             className="flex-1 md:flex-none"
           >

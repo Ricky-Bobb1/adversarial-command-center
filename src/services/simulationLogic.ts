@@ -1,12 +1,14 @@
 
-interface LogEntry {
-  timestamp: string;
-  agent: "Red" | "Blue" | "System";
-  action: string;
-  outcome: string;
-}
+import { SIMULATION_CONSTANTS, OUTCOME_INDICATORS } from "@/constants/simulation";
+import { validateLogEntry } from "@/utils/validation";
+import type { 
+  LogEntry, 
+  SimulationLogTemplate, 
+  SimulationMetrics, 
+  AgentType 
+} from "@/types/simulation";
 
-const sampleLogs: Omit<LogEntry, 'timestamp'>[] = [
+const sampleLogs: SimulationLogTemplate[] = [
   { agent: "System", action: "Simulation initialized", outcome: "Ready" },
   { agent: "Red", action: "Network reconnaissance", outcome: "Discovered 15 active hosts" },
   { agent: "Blue", action: "Anomaly detection activated", outcome: "Monitoring network traffic" },
@@ -28,19 +30,25 @@ export class SimulationLogic {
     return new Date().toLocaleTimeString();
   }
 
-  static createLogEntry(logTemplate: Omit<LogEntry, 'timestamp'>): LogEntry {
-    return {
+  static createLogEntry(logTemplate: SimulationLogTemplate): LogEntry {
+    const entry: LogEntry = {
       ...logTemplate,
       timestamp: this.generateTimestamp()
     };
+    
+    if (!validateLogEntry(entry)) {
+      throw new Error("Invalid log entry created");
+    }
+    
+    return entry;
   }
 
-  static getSampleLogs(): Omit<LogEntry, 'timestamp'>[] {
+  static getSampleLogs(): SimulationLogTemplate[] {
     return [...sampleLogs];
   }
 
   static validateScenario(scenario: string): boolean {
-    return scenario.trim().length > 0;
+    return scenario.trim().length >= SIMULATION_CONSTANTS.MIN_SCENARIO_NAME_LENGTH;
   }
 
   static calculateSimulationDuration(logs: LogEntry[]): number {
@@ -52,10 +60,57 @@ export class SimulationLogic {
     const firstTime = new Date(`2000-01-01 ${firstLog.timestamp}`);
     const lastTime = new Date(`2000-01-01 ${lastLog.timestamp}`);
     
-    return Math.abs(lastTime.getTime() - firstTime.getTime()) / 1000; // in seconds
+    return Math.abs(lastTime.getTime() - firstTime.getTime()) / 1000;
   }
 
   static getSimulationProgress(currentLogIndex: number, totalLogs: number): number {
+    if (totalLogs === 0) return 0;
     return Math.round((currentLogIndex / totalLogs) * 100);
+  }
+
+  static calculateMetrics(logs: LogEntry[]): SimulationMetrics {
+    const redActions = logs.filter(log => log.agent === "Red").length;
+    const blueActions = logs.filter(log => log.agent === "Blue").length;
+    const systemEvents = logs.filter(log => log.agent === "System").length;
+    
+    const successfulBlocks = logs.filter(log => 
+      log.agent === "Blue" && 
+      OUTCOME_INDICATORS.POSITIVE.some(keyword => 
+        log.outcome.toLowerCase().includes(keyword)
+      )
+    ).length;
+    
+    const successfulAttacks = logs.filter(log => 
+      log.agent === "Red" && 
+      OUTCOME_INDICATORS.NEGATIVE.some(keyword => 
+        log.outcome.toLowerCase().includes(keyword)
+      )
+    ).length;
+    
+    return {
+      totalLogs: logs.length,
+      redActions,
+      blueActions,
+      systemEvents,
+      duration: this.calculateSimulationDuration(logs),
+      successfulBlocks,
+      successfulAttacks,
+    };
+  }
+
+  static isOutcomePositive(outcome: string, agent: AgentType): boolean {
+    const lowerOutcome = outcome.toLowerCase();
+    
+    if (agent === "Red") {
+      return OUTCOME_INDICATORS.NEGATIVE.some(keyword => 
+        lowerOutcome.includes(keyword)
+      );
+    } else if (agent === "Blue") {
+      return OUTCOME_INDICATORS.POSITIVE.some(keyword => 
+        lowerOutcome.includes(keyword)
+      );
+    }
+    
+    return false;
   }
 }

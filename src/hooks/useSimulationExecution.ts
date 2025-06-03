@@ -4,6 +4,8 @@ import { useToast } from "@/hooks/use-toast";
 import { postToMockApi, mockApiEndpoints } from "@/utils/mockApi";
 import { useSimulationContext } from "@/contexts/SimulationContext";
 import { SimulationLogic } from "@/services/simulationLogic";
+import { validateScenario } from "@/utils/validation";
+import { SIMULATION_CONSTANTS, TOAST_MESSAGES } from "@/constants/simulation";
 
 export const useSimulationExecution = () => {
   const { toast } = useToast();
@@ -11,10 +13,12 @@ export const useSimulationExecution = () => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const startSimulation = async (selectedScenario: string) => {
-    if (!SimulationLogic.validateScenario(selectedScenario)) {
+    const validation = validateScenario(selectedScenario);
+    
+    if (!validation.isValid) {
       toast({
-        title: "Scenario Required",
-        description: "Please select a scenario before running the simulation",
+        title: TOAST_MESSAGES.SCENARIO_REQUIRED,
+        description: validation.errors.join(", "),
         variant: "destructive",
       });
       return;
@@ -31,7 +35,7 @@ export const useSimulationExecution = () => {
       dispatch({ type: 'SET_ERROR', payload: null });
       
       toast({
-        title: "Simulation Started",
+        title: TOAST_MESSAGES.SIMULATION_STARTED,
         description: `Running scenario: ${selectedScenario}`,
       });
 
@@ -49,15 +53,15 @@ export const useSimulationExecution = () => {
             clearInterval(intervalRef.current);
           }
           toast({
-            title: "Simulation Complete",
+            title: TOAST_MESSAGES.SIMULATION_COMPLETE,
             description: "The adversarial simulation has finished successfully",
           });
         }
-      }, 1500);
+      }, SIMULATION_CONSTANTS.LOG_INTERVAL_MS);
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: 'Failed to start simulation' });
       toast({
-        title: "Failed to Start Simulation",
+        title: TOAST_MESSAGES.FAILED_TO_START,
         description: "Could not start the simulation",
         variant: "destructive",
       });
