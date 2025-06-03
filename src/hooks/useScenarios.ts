@@ -1,7 +1,8 @@
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { fetchMockData } from "@/utils/mockApi";
+import { useSimulationContext } from "@/contexts/SimulationContext";
 
 interface ScenariosData {
   scenarios: string[];
@@ -9,28 +10,32 @@ interface ScenariosData {
 
 export const useScenarios = () => {
   const { toast } = useToast();
-  const [scenarios, setScenarios] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { state, dispatch } = useSimulationContext();
 
   useEffect(() => {
     const loadScenarios = async () => {
       try {
-        setIsLoading(true);
+        dispatch({ type: 'SET_LOADING_SCENARIOS', payload: true });
         const data = await fetchMockData<ScenariosData>('scenarios');
-        setScenarios(data.scenarios);
+        dispatch({ type: 'SET_SCENARIOS', payload: data.scenarios });
       } catch (error) {
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to load scenarios' });
         toast({
           title: "Failed to Load Scenarios",
           description: "Could not load available scenarios",
           variant: "destructive",
         });
       } finally {
-        setIsLoading(false);
+        dispatch({ type: 'SET_LOADING_SCENARIOS', payload: false });
       }
     };
 
     loadScenarios();
-  }, [toast]);
+  }, [toast, dispatch]);
 
-  return { scenarios, isLoading };
+  return { 
+    scenarios: state.scenarios, 
+    isLoading: state.isLoadingScenarios,
+    error: state.error
+  };
 };

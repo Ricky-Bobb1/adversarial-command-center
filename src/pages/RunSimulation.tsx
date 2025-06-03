@@ -1,12 +1,14 @@
 
-import { useState } from "react";
+import { SimulationProvider, useSimulationContext } from "@/contexts/SimulationContext";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import LogConsole from "@/components/LogConsole";
 import SimulationControls from "@/components/SimulationControls";
+import { CenteredLoader, SimulationControlsSkeleton, LogConsoleSkeleton } from "@/components/LoadingStates";
 import { useSimulationExecution } from "@/hooks/useSimulationExecution";
 import { useScenarios } from "@/hooks/useScenarios";
 
-const RunSimulation = () => {
-  const [selectedScenario, setSelectedScenario] = useState("");
+const RunSimulationContent = () => {
+  const { state, dispatch } = useSimulationContext();
   const { scenarios, isLoading } = useScenarios();
   const {
     isRunning,
@@ -17,16 +19,22 @@ const RunSimulation = () => {
   } = useSimulationExecution();
 
   const handleStartSimulation = () => {
-    startSimulation(selectedScenario);
+    startSimulation(state.selectedScenario);
+  };
+
+  const handleScenarioChange = (scenario: string) => {
+    dispatch({ type: 'SET_SCENARIO', payload: scenario });
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading scenarios...</p>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Run Simulation</h1>
+          <p className="text-gray-600 mt-2">Execute adversarial AI simulations against your infrastructure</p>
         </div>
+        <SimulationControlsSkeleton />
+        <LogConsoleSkeleton />
       </div>
     );
   }
@@ -38,18 +46,32 @@ const RunSimulation = () => {
         <p className="text-gray-600 mt-2">Execute adversarial AI simulations against your infrastructure</p>
       </div>
 
-      <SimulationControls
-        selectedScenario={selectedScenario}
-        setSelectedScenario={setSelectedScenario}
-        scenarios={scenarios}
-        isRunning={isRunning}
-        onStart={handleStartSimulation}
-        onStop={stopSimulation}
-        onReset={resetSimulation}
-      />
+      <ErrorBoundary>
+        <SimulationControls
+          selectedScenario={state.selectedScenario}
+          setSelectedScenario={handleScenarioChange}
+          scenarios={scenarios}
+          isRunning={isRunning}
+          onStart={handleStartSimulation}
+          onStop={stopSimulation}
+          onReset={resetSimulation}
+        />
+      </ErrorBoundary>
 
-      <LogConsole logs={logs} isRunning={isRunning} />
+      <ErrorBoundary>
+        <LogConsole logs={logs} isRunning={isRunning} />
+      </ErrorBoundary>
     </div>
+  );
+};
+
+const RunSimulation = () => {
+  return (
+    <SimulationProvider>
+      <ErrorBoundary>
+        <RunSimulationContent />
+      </ErrorBoundary>
+    </SimulationProvider>
   );
 };
 

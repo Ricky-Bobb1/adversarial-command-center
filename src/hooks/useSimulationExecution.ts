@@ -1,40 +1,17 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { postToMockApi, mockApiEndpoints } from "@/utils/mockApi";
-
-interface LogEntry {
-  timestamp: string;
-  agent: "Red" | "Blue" | "System";
-  action: string;
-  outcome: string;
-}
-
-const sampleLogs: Omit<LogEntry, 'timestamp'>[] = [
-  { agent: "System", action: "Simulation initialized", outcome: "Ready" },
-  { agent: "Red", action: "Network reconnaissance", outcome: "Discovered 15 active hosts" },
-  { agent: "Blue", action: "Anomaly detection activated", outcome: "Monitoring network traffic" },
-  { agent: "Red", action: "Port scanning target", outcome: "Found open ports 22, 80, 443" },
-  { agent: "Blue", action: "Port scan detected", outcome: "Alert triggered" },
-  { agent: "Red", action: "SQL injection attempt", outcome: "Vulnerability exploited" },
-  { agent: "Blue", action: "Database monitoring", outcome: "Suspicious queries detected" },
-  { agent: "Red", action: "Privilege escalation", outcome: "Admin access gained" },
-  { agent: "Blue", action: "User behavior analysis", outcome: "Unusual activity flagged" },
-  { agent: "Red", action: "Data exfiltration", outcome: "Patient records accessed" },
-  { agent: "Blue", action: "Data loss prevention", outcome: "Transfer blocked" },
-  { agent: "Red", action: "Lateral movement", outcome: "Accessed medical devices" },
-  { agent: "Blue", action: "Network segmentation", outcome: "Critical systems isolated" },
-  { agent: "System", action: "Simulation completed", outcome: "Report generated" }
-];
+import { useSimulationContext } from "@/contexts/SimulationContext";
+import { SimulationLogic } from "@/services/simulationLogic";
 
 export const useSimulationExecution = () => {
   const { toast } = useToast();
-  const [isRunning, setIsRunning] = useState(false);
-  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const { state, dispatch } = useSimulationContext();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const startSimulation = async (selectedScenario: string) => {
-    if (!selectedScenario) {
+    if (!SimulationLogic.validateScenario(selectedScenario)) {
       toast({
         title: "Scenario Required",
         description: "Please select a scenario before running the simulation",
@@ -44,34 +21,30 @@ export const useSimulationExecution = () => {
     }
 
     try {
-      // Post simulation request to mock API
       await postToMockApi(mockApiEndpoints.runSimulation, {
         scenario: selectedScenario,
         timestamp: new Date().toISOString()
       });
 
-      setIsRunning(true);
-      setLogs([]);
+      dispatch({ type: 'SET_RUNNING', payload: true });
+      dispatch({ type: 'CLEAR_LOGS' });
+      dispatch({ type: 'SET_ERROR', payload: null });
       
       toast({
         title: "Simulation Started",
         description: `Running scenario: ${selectedScenario}`,
       });
 
-      // Simulate streaming logs
+      const sampleLogs = SimulationLogic.getSampleLogs();
       let logIndex = 0;
+      
       intervalRef.current = setInterval(() => {
         if (logIndex < sampleLogs.length) {
-          const newLog: LogEntry = {
-            ...sampleLogs[logIndex],
-            timestamp: new Date().toLocaleTimeString()
-          };
-          
-          setLogs(prevLogs => [...prevLogs, newLog]);
+          const newLog = SimulationLogic.createLogEntry(sampleLogs[logIndex]);
+          dispatch({ type: 'ADD_LOG', payload: newLog });
           logIndex++;
         } else {
-          // Simulation complete
-          setIsRunning(false);
+          dispatch({ type: 'SET_RUNNING', payload: false });
           if (intervalRef.current) {
             clearInterval(intervalRef.current);
           }
@@ -80,8 +53,9 @@ export const useSimulationExecution = () => {
             description: "The adversarial simulation has finished successfully",
           });
         }
-      }, 1500); // Add a new log every 1.5 seconds
+      }, 1500);
     } catch (error) {
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to start simulation' });
       toast({
         title: "Failed to Start Simulation",
         description: "Could not start the simulation",
@@ -91,7 +65,7 @@ export const useSimulationExecution = () => {
   };
 
   const stopSimulation = () => {
-    setIsRunning(false);
+    dispatch({ type: 'SET_RUNNING', payload: false });
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
@@ -103,8 +77,7 @@ export const useSimulationExecution = () => {
   };
 
   const resetSimulation = () => {
-    setIsRunning(false);
-    setLogs([]);
+    dispatch({ type: 'RESET_SIMULATION' });
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
@@ -114,7 +87,6 @@ export const useSimulationExecution = () => {
     });
   };
 
-  // Cleanup interval on unmount
   useEffect(() => {
     return () => {
       if (intervalRef.current) {
@@ -124,8 +96,8 @@ export const useSimulationExecution = () => {
   }, []);
 
   return {
-    isRunning,
-    logs,
+    isRunning: state.isRunning,
+    logs: state.logs,
     startSimulation,
     stopSimulation,
     resetSimulation
