@@ -1,0 +1,34 @@
+
+{
+  "metrics": {
+    "timeToDetect": "4.2",
+    "redScore": 75,
+    "blueScore": 68,
+    "nodesCompromised": 3
+  },
+  "timeline": [
+    { "time": "00:30", "redActions": 2, "blueActions": 1 },
+    { "time": "01:00", "redActions": 3, "blueActions": 2 },
+    { "time": "01:30", "redActions": 1, "blueActions": 4 },
+    { "time": "02:00", "redActions": 4, "blueActions": 3 },
+    { "time": "02:30", "redActions": 2, "blueActions": 5 },
+    { "time": "03:00", "redActions": 3, "blueActions": 2 },
+    { "time": "03:30", "redActions": 1, "blueActions": 3 },
+    { "time": "04:00", "redActions": 2, "blueActions": 4 }
+  ],
+  "targetedNodes": [
+    { "node": "EMR Database", "attacks": 12 },
+    { "node": "MRI Workstation", "attacks": 8 },
+    { "node": "Pharmacy System", "attacks": 6 },
+    { "node": "Dr. Wilson", "attacks": 4 },
+    { "node": "Lab Equipment", "attacks": 3 }
+  ],
+  "attackTypes": [
+    { "type": "SQL Injection", "count": 8 },
+    { "type": "Phishing", "count": 6 },
+    { "type": "Privilege Escalation", "count": 5 },
+    { "type": "Lateral Movement", "count": 4 },
+    { "type": "Data Exfiltration", "count": 3 },
+    { "type": "Malware", "count": 2 }
+  ]
+}

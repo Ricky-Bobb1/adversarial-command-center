@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { fetchMockData, postToMockApi, mockApiEndpoints } from "@/utils/mockApi";
 
 interface AgentConfig {
   redAgent: {
@@ -25,21 +25,38 @@ interface AgentConfig {
 const Agents = () => {
   const { toast } = useToast();
   const [config, setConfig] = useState<AgentConfig>({
-    redAgent: {
-      model: "",
-      strategies: []
-    },
-    blueAgent: {
-      model: "",
-      strategies: []
-    },
+    redAgent: { model: "", strategies: [] },
+    blueAgent: { model: "", strategies: [] },
     humanInTheLoop: false
   });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [redStrategyInput, setRedStrategyInput] = useState("");
   const [blueStrategyInput, setBlueStrategyInput] = useState("");
 
   const models = ["GPT-4", "GPT-4 Turbo", "Claude 3.5 Sonnet", "Claude 3 Opus", "Gemini Pro"];
+
+  // Load initial agent configuration
+  useEffect(() => {
+    const loadAgentConfig = async () => {
+      try {
+        setIsLoading(true);
+        const data = await fetchMockData<AgentConfig>('agents');
+        setConfig(data);
+      } catch (error) {
+        toast({
+          title: "Failed to Load Configuration",
+          description: "Could not load existing agent configuration",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAgentConfig();
+  }, [toast]);
 
   const addRedStrategy = () => {
     if (redStrategyInput.trim() && !config.redAgent.strategies.includes(redStrategyInput.trim())) {
@@ -101,7 +118,7 @@ const Agents = () => {
     }
   };
 
-  const saveConfiguration = () => {
+  const saveConfiguration = async () => {
     if (!config.redAgent.model || !config.blueAgent.model) {
       toast({
         title: "Configuration Error",
@@ -111,11 +128,35 @@ const Agents = () => {
       return;
     }
 
-    toast({
-      title: "Configuration Saved",
-      description: "Agent configuration has been saved successfully",
-    });
+    try {
+      setIsSaving(true);
+      await postToMockApi(mockApiEndpoints.agents, config);
+      
+      toast({
+        title: "Configuration Saved",
+        description: "Agent configuration has been saved successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Save Failed",
+        description: "Failed to save agent configuration",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading agent configuration...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -283,9 +324,9 @@ const Agents = () => {
 
       {/* Save Configuration */}
       <div className="flex justify-end">
-        <Button onClick={saveConfiguration} size="lg">
+        <Button onClick={saveConfiguration} size="lg" disabled={isSaving}>
           <Save className="h-4 w-4 mr-2" />
-          Save Configuration
+          {isSaving ? "Saving..." : "Save Configuration"}
         </Button>
       </div>
     </div>

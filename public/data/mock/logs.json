@@ -1,0 +1,45 @@
+
+{
+  "logs": [
+    {
+      "id": 1,
+      "timestamp": "2024-06-03 15:42:18",
+      "agent": "Red",
+      "action": "SQL Injection",
+      "targetNode": "EMR Database",
+      "result": "Success"
+    },
+    {
+      "id": 2,
+      "timestamp": "2024-06-03 15:42:15",
+      "agent": "Blue", 
+      "action": "Anomaly Detection",
+      "targetNode": "EMR Database",
+      "result": "Fail"
+    },
+    {
+      "id": 3,
+      "timestamp": "2024-06-03 15:41:55",
+      "agent": "Red",
+      "action": "Phishing Attack",
+      "targetNode": "Workstation-A",
+      "result": "Success"
+    },
+    {
+      "id": 4,
+      "timestamp": "2024-06-03 15:41:52",
+      "agent": "Blue",
+      "action": "Email Filtering",
+      "targetNode": "Mail Server",
+      "result": "Success"
+    },
+    {
+      "id": 5,
+      "timestamp": "2024-06-03 15:41:32",
+      "agent": "Red",
+      "action": "Privilege Escalation",
+      "targetNode": "Domain Controller",
+      "result": "Fail"
+    }
+  ]
+}

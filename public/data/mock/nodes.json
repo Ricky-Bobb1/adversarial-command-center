@@ -1,0 +1,37 @@
+
+{
+  "nodes": [
+    {
+      "id": "node_001",
+      "name": "EMR Database Server",
+      "type": "Software",
+      "services": ["MySQL", "Apache", "EMR System"],
+      "vulnerabilities": "CVE-2024-1234, CVE-2023-5678",
+      "capabilities": "Stores patient records, medical histories, and treatment plans. High-value target with administrative access to all patient data."
+    },
+    {
+      "id": "node_002", 
+      "name": "MRI Machine Workstation",
+      "type": "Hardware",
+      "services": ["DICOM", "Windows 10", "Remote Desktop"],
+      "vulnerabilities": "CVE-2024-2345",
+      "capabilities": "Controls MRI machine operations, accesses imaging data, connected to PACS network."
+    },
+    {
+      "id": "node_003",
+      "name": "Dr. Sarah Wilson",
+      "type": "Human",
+      "services": ["Email", "VPN Access", "Clinical Systems"],
+      "vulnerabilities": "Social engineering susceptible",
+      "capabilities": "Senior physician with elevated privileges, access to restricted patient data and administrative functions."
+    },
+    {
+      "id": "node_004",
+      "name": "Pharmacy System",
+      "type": "Software", 
+      "services": ["Pharmacy DB", "Prescription System", "Inventory Management"],
+      "vulnerabilities": "CVE-2024-3456",
+      "capabilities": "Manages drug inventory, prescription processing, and medication dispensing controls."
+    }
+  ]
+}

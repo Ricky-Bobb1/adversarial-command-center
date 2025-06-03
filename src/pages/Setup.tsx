@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { fetchMockData, postToMockApi, mockApiEndpoints } from "@/utils/mockApi";
 
 interface Node {
   id: string;
@@ -19,10 +19,16 @@ interface Node {
   capabilities: string;
 }
 
+interface NodesData {
+  nodes: Node[];
+}
+
 const Setup = () => {
   const { toast } = useToast();
   const [nodes, setNodes] = useState<Node[]>([]);
   const [editingNode, setEditingNode] = useState<Node | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     type: "",
@@ -32,6 +38,27 @@ const Setup = () => {
   });
 
   const nodeTypes = ["Human", "Software", "Hardware"];
+
+  // Load initial data from mock API
+  useEffect(() => {
+    const loadNodes = async () => {
+      try {
+        setIsLoading(true);
+        const data = await fetchMockData<NodesData>('nodes');
+        setNodes(data.nodes);
+      } catch (error) {
+        toast({
+          title: "Failed to Load Data",
+          description: "Could not load existing node configurations",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadNodes();
+  }, [toast]);
 
   const resetForm = () => {
     setFormData({
@@ -112,7 +139,7 @@ const Setup = () => {
     });
   };
 
-  const saveConfiguration = () => {
+  const saveConfiguration = async () => {
     if (nodes.length === 0) {
       toast({
         title: "Configuration Error",
@@ -122,11 +149,35 @@ const Setup = () => {
       return;
     }
 
-    toast({
-      title: "Configuration Saved",
-      description: `Successfully saved configuration with ${nodes.length} nodes`,
-    });
+    try {
+      setIsSaving(true);
+      await postToMockApi(mockApiEndpoints.nodes, { nodes });
+      
+      toast({
+        title: "Configuration Saved",
+        description: `Successfully saved configuration with ${nodes.length} nodes`,
+      });
+    } catch (error) {
+      toast({
+        title: "Save Failed",
+        description: "Failed to save node configuration",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading configuration...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -287,9 +338,13 @@ const Setup = () => {
 
       {/* Save Configuration */}
       <div className="flex justify-end">
-        <Button onClick={saveConfiguration} size="lg" disabled={nodes.length === 0}>
+        <Button 
+          onClick={saveConfiguration} 
+          size="lg" 
+          disabled={nodes.length === 0 || isSaving}
+        >
           <Save className="h-4 w-4 mr-2" />
-          Save Configuration
+          {isSaving ? "Saving..." : "Save Configuration"}
         </Button>
       </div>
     </div>

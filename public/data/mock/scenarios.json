@@ -1,0 +1,10 @@
+
+{
+  "scenarios": [
+    "Hospital Network Security Assessment",
+    "Emergency Response System Test", 
+    "Patient Data Protection Scenario",
+    "Medical Device Network Penetration Test",
+    "Pharmacy System Security Evaluation"
+  ]
+}

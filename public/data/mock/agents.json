@@ -1,0 +1,12 @@
+
+{
+  "redAgent": {
+    "model": "GPT-4 Turbo",
+    "strategies": ["SQL Injection", "Phishing", "Privilege Escalation", "Lateral Movement", "Data Exfiltration"]
+  },
+  "blueAgent": {
+    "model": "Claude 3.5 Sonnet", 
+    "strategies": ["Anomaly Detection", "Access Control", "Network Monitoring", "Intrusion Detection", "Data Loss Prevention"]
+  },
+  "humanInTheLoop": true
+}

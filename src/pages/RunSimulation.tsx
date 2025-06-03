@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Play, Square, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import LogConsole from "@/components/LogConsole";
+import { fetchMockData, postToMockApi, mockApiEndpoints } from "@/utils/mockApi";
 
 interface LogEntry {
   timestamp: string;
@@ -15,12 +15,39 @@ interface LogEntry {
   outcome: string;
 }
 
+interface ScenariosData {
+  scenarios: string[];
+}
+
 const RunSimulation = () => {
   const { toast } = useToast();
   const [selectedScenario, setSelectedScenario] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [scenarios, setScenarios] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Load scenarios from mock data
+  useEffect(() => {
+    const loadScenarios = async () => {
+      try {
+        setIsLoading(true);
+        const data = await fetchMockData<ScenariosData>('scenarios');
+        setScenarios(data.scenarios);
+      } catch (error) {
+        toast({
+          title: "Failed to Load Scenarios",
+          description: "Could not load available scenarios",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadScenarios();
+  }, [toast]);
 
   // Sample scenarios (would normally come from saved configurations)
   const scenarios = [
@@ -49,7 +76,7 @@ const RunSimulation = () => {
     { agent: "System", action: "Simulation completed", outcome: "Report generated" }
   ];
 
-  const startSimulation = () => {
+  const startSimulation = async () => {
     if (!selectedScenario) {
       toast({
         title: "Scenario Required",
@@ -59,37 +86,51 @@ const RunSimulation = () => {
       return;
     }
 
-    setIsRunning(true);
-    setLogs([]);
-    
-    toast({
-      title: "Simulation Started",
-      description: `Running scenario: ${selectedScenario}`,
-    });
+    try {
+      // Post simulation request to mock API
+      await postToMockApi(mockApiEndpoints.runSimulation, {
+        scenario: selectedScenario,
+        timestamp: new Date().toISOString()
+      });
 
-    // Simulate streaming logs
-    let logIndex = 0;
-    intervalRef.current = setInterval(() => {
-      if (logIndex < sampleLogs.length) {
-        const newLog: LogEntry = {
-          ...sampleLogs[logIndex],
-          timestamp: new Date().toLocaleTimeString()
-        };
-        
-        setLogs(prevLogs => [...prevLogs, newLog]);
-        logIndex++;
-      } else {
-        // Simulation complete
-        setIsRunning(false);
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
+      setIsRunning(true);
+      setLogs([]);
+      
+      toast({
+        title: "Simulation Started",
+        description: `Running scenario: ${selectedScenario}`,
+      });
+
+      // Simulate streaming logs
+      let logIndex = 0;
+      intervalRef.current = setInterval(() => {
+        if (logIndex < sampleLogs.length) {
+          const newLog: LogEntry = {
+            ...sampleLogs[logIndex],
+            timestamp: new Date().toLocaleTimeString()
+          };
+          
+          setLogs(prevLogs => [...prevLogs, newLog]);
+          logIndex++;
+        } else {
+          // Simulation complete
+          setIsRunning(false);
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+          }
+          toast({
+            title: "Simulation Complete",
+            description: "The adversarial simulation has finished successfully",
+          });
         }
-        toast({
-          title: "Simulation Complete",
-          description: "The adversarial simulation has finished successfully",
-        });
-      }
-    }, 1500); // Add a new log every 1.5 seconds
+      }, 1500); // Add a new log every 1.5 seconds
+    } catch (error) {
+      toast({
+        title: "Failed to Start Simulation",
+        description: "Could not start the simulation",
+        variant: "destructive",
+      });
+    }
   };
 
   const stopSimulation = () => {
@@ -124,6 +165,17 @@ const RunSimulation = () => {
       }
     };
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading scenarios...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

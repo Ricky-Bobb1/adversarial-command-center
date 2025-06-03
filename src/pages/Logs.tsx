@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FileText, Download, Search, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { fetchMockData, postToMockApi, mockApiEndpoints } from "@/utils/mockApi";
 
 interface LogEntry {
   id: number;
@@ -18,111 +18,38 @@ interface LogEntry {
   result: "Success" | "Fail";
 }
 
+interface LogsData {
+  logs: LogEntry[];
+}
+
 const Logs = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [agentFilter, setAgentFilter] = useState("all");
   const [resultFilter, setResultFilter] = useState("all");
+  const [allLogs, setAllLogs] = useState<LogEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock log data
-  const allLogs: LogEntry[] = [
-    {
-      id: 1,
-      timestamp: "2024-06-03 15:42:18",
-      agent: "Red",
-      action: "SQL Injection",
-      targetNode: "EMR Database",
-      result: "Success"
-    },
-    {
-      id: 2,
-      timestamp: "2024-06-03 15:42:15",
-      agent: "Blue",
-      action: "Anomaly Detection",
-      targetNode: "EMR Database",
-      result: "Fail"
-    },
-    {
-      id: 3,
-      timestamp: "2024-06-03 15:41:55",
-      agent: "Red",
-      action: "Phishing Attack",
-      targetNode: "Workstation-A",
-      result: "Success"
-    },
-    {
-      id: 4,
-      timestamp: "2024-06-03 15:41:52",
-      agent: "Blue",
-      action: "Email Filtering",
-      targetNode: "Mail Server",
-      result: "Success"
-    },
-    {
-      id: 5,
-      timestamp: "2024-06-03 15:41:32",
-      agent: "Red",
-      action: "Privilege Escalation",
-      targetNode: "Domain Controller",
-      result: "Fail"
-    },
-    {
-      id: 6,
-      timestamp: "2024-06-03 15:41:28",
-      agent: "Blue",
-      action: "Access Control",
-      targetNode: "Domain Controller",
-      result: "Success"
-    },
-    {
-      id: 7,
-      timestamp: "2024-06-03 15:40:12",
-      agent: "Red",
-      action: "Lateral Movement",
-      targetNode: "Medical Device",
-      result: "Success"
-    },
-    {
-      id: 8,
-      timestamp: "2024-06-03 15:40:08",
-      agent: "Blue",
-      action: "Network Segmentation",
-      targetNode: "Medical Device",
-      result: "Fail"
-    },
-    {
-      id: 9,
-      timestamp: "2024-06-03 15:39:45",
-      agent: "Red",
-      action: "Data Exfiltration",
-      targetNode: "Patient Records",
-      result: "Fail"
-    },
-    {
-      id: 10,
-      timestamp: "2024-06-03 15:39:42",
-      agent: "Blue",
-      action: "Data Loss Prevention",
-      targetNode: "Patient Records",
-      result: "Success"
-    },
-    {
-      id: 11,
-      timestamp: "2024-06-03 15:39:25",
-      agent: "Red",
-      action: "Port Scanning",
-      targetNode: "Pharmacy System",
-      result: "Success"
-    },
-    {
-      id: 12,
-      timestamp: "2024-06-03 15:39:20",
-      agent: "Blue",
-      action: "Intrusion Detection",
-      targetNode: "Pharmacy System",
-      result: "Success"
-    }
-  ];
+  // Load logs from mock data
+  useEffect(() => {
+    const loadLogs = async () => {
+      try {
+        setIsLoading(true);
+        const data = await fetchMockData<LogsData>('logs');
+        setAllLogs(data.logs);
+      } catch (error) {
+        toast({
+          title: "Failed to Load Logs",
+          description: "Could not load simulation logs",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadLogs();
+  }, [toast]);
 
   // Filter logs based on search term and filters
   const filteredLogs = allLogs.filter(log => {
@@ -142,36 +69,62 @@ const Logs = () => {
     return result === "Success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
   };
 
-  const handleDownloadCSV = () => {
-    // Create CSV content
-    const headers = ["Timestamp", "Agent", "Action", "Target Node", "Result"];
-    const csvContent = [
-      headers.join(","),
-      ...filteredLogs.map(log => [
-        log.timestamp,
-        log.agent,
-        `"${log.action}"`,
-        `"${log.targetNode}"`,
-        log.result
-      ].join(","))
-    ].join("\n");
+  const handleDownloadCSV = async () => {
+    try {
+      // Post export request to mock API
+      await postToMockApi(mockApiEndpoints.logs, {
+        action: 'export_csv',
+        filters: { searchTerm, agentFilter, resultFilter },
+        timestamp: new Date().toISOString()
+      });
 
-    // Create and trigger download
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `simulation-logs-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+      // Create CSV content
+      const headers = ["Timestamp", "Agent", "Action", "Target Node", "Result"];
+      const csvContent = [
+        headers.join(","),
+        ...filteredLogs.map(log => [
+          log.timestamp,
+          log.agent,
+          `"${log.action}"`,
+          `"${log.targetNode}"`,
+          log.result
+        ].join(","))
+      ].join("\n");
 
-    toast({
-      title: "CSV Downloaded",
-      description: `Downloaded ${filteredLogs.length} log entries as CSV`,
-    });
+      // Create and trigger download
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `simulation-logs-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "CSV Downloaded",
+        description: `Downloaded ${filteredLogs.length} log entries as CSV`,
+      });
+    } catch (error) {
+      toast({
+        title: "Export Failed", 
+        description: "Could not export logs to CSV",
+        variant: "destructive",
+      });
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading logs...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
