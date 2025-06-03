@@ -1,13 +1,23 @@
-
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
   ttl: number; // time to live in milliseconds
 }
 
+import { environment } from '../utils/environment';
+import { logger } from '../utils/logger';
+
 class CacheService {
   private cache = new Map<string, CacheEntry<any>>();
-  private defaultTTL = 5 * 60 * 1000; // 5 minutes
+  private defaultTTL: number;
+
+  constructor() {
+    this.defaultTTL = environment.cacheTimeout;
+    logger.info('Cache Service initialized', 'CacheService', {
+      defaultTTL: this.defaultTTL,
+      environment: environment.isDevelopment ? 'development' : 'production'
+    });
+  }
 
   set<T>(key: string, data: T, ttl: number = this.defaultTTL): void {
     this.cache.set(key, {
@@ -15,12 +25,14 @@ class CacheService {
       timestamp: Date.now(),
       ttl,
     });
+    logger.debug(`Cache set: ${key}`, 'Cache', { ttl });
   }
 
   get<T>(key: string): T | null {
     const entry = this.cache.get(key);
     
     if (!entry) {
+      logger.debug(`Cache miss: ${key}`, 'Cache');
       return null;
     }
 
@@ -29,9 +41,11 @@ class CacheService {
 
     if (isExpired) {
       this.cache.delete(key);
+      logger.debug(`Cache expired: ${key}`, 'Cache');
       return null;
     }
 
+    logger.debug(`Cache hit: ${key}`, 'Cache');
     return entry.data as T;
   }
 
@@ -47,7 +61,6 @@ class CacheService {
     this.cache.clear();
   }
 
-  // Get or fetch pattern - common caching pattern
   async getOrFetch<T>(
     key: string,
     fetcher: () => Promise<T>,
@@ -56,17 +69,27 @@ class CacheService {
     const cached = this.get<T>(key);
     
     if (cached !== null) {
-      console.log(`Cache hit for key: ${key}`);
+      logger.debug(`Cache hit for key: ${key}`, 'Cache');
       return cached;
     }
 
-    console.log(`Cache miss for key: ${key}, fetching...`);
-    const data = await fetcher();
-    this.set(key, data, ttl);
-    return data;
+    logger.debug(`Cache miss for key: ${key}, fetching...`, 'Cache');
+    const startTime = performance.now();
+    
+    try {
+      const data = await fetcher();
+      this.set(key, data, ttl);
+      
+      const duration = performance.now() - startTime;
+      logger.performance(`Cache fetch: ${key}`, duration, 'Cache');
+      
+      return data;
+    } catch (error) {
+      logger.error(`Cache fetch failed: ${key}`, 'Cache', error as Error);
+      throw error;
+    }
   }
 
-  // Invalidate cache entries by pattern
   invalidatePattern(pattern: string): void {
     const regex = new RegExp(pattern);
     const keysToDelete: string[] = [];

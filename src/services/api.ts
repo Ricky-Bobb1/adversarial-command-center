@@ -1,163 +1,171 @@
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-
-export const apiConfig = {
-  baseURL: API_BASE_URL,
-  timeout: 30000, // 30 seconds for simulation requests
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  retries: 3,
-  retryDelay: 1000, // 1 second
-};
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { environment } from '../utils/environment';
+import { logger } from '../utils/logger';
 
 export class ApiError extends Error {
-  constructor(
-    message: string,
-    public status?: number,
-    public response?: any,
-    public isRetryable: boolean = false
-  ) {
+  status?: number;
+  details?: any;
+
+  constructor(message: string, status?: number, details?: any) {
     super(message);
     this.name = 'ApiError';
+    this.status = status;
+    this.details = details;
   }
 }
 
-// Request cancellation support
-export class RequestCancellation {
-  private controllers = new Map<string, AbortController>();
+interface RequestOptions extends AxiosRequestConfig {
+  requestId?: string;
+}
 
-  createController(requestId: string): AbortController {
-    this.cancelRequest(requestId); // Cancel existing request if any
-    const controller = new AbortController();
-    this.controllers.set(requestId, controller);
-    return controller;
-  }
-
-  cancelRequest(requestId: string): void {
-    const controller = this.controllers.get(requestId);
+// Store cancellation tokens for request cancellation
+const requestCancellation = {
+  tokens: new Map<string, AbortController>(),
+  add: (requestId: string, controller: AbortController) => {
+    requestCancellation.tokens.set(requestId, controller);
+  },
+  remove: (requestId: string) => {
+    requestCancellation.tokens.delete(requestId);
+  },
+  cancel: (requestId: string) => {
+    const controller = requestCancellation.tokens.get(requestId);
     if (controller) {
       controller.abort();
-      this.controllers.delete(requestId);
+      requestCancellation.tokens.delete(requestId);
     }
-  }
-
-  cancelAll(): void {
-    this.controllers.forEach(controller => controller.abort());
-    this.controllers.clear();
-  }
-}
-
-export const requestCancellation = new RequestCancellation();
-
-// Retry mechanism
-async function withRetry<T>(
-  operation: () => Promise<T>,
-  maxRetries: number = apiConfig.retries,
-  delay: number = apiConfig.retryDelay
-): Promise<T> {
-  let lastError: Error;
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error as Error;
-      
-      // Don't retry if it's the last attempt or error is not retryable
-      if (attempt === maxRetries || (error instanceof ApiError && !error.isRetryable)) {
-        break;
-      }
-
-      // Don't retry on client errors (4xx)
-      if (error instanceof ApiError && error.status && error.status >= 400 && error.status < 500) {
-        break;
-      }
-
-      // Wait before retrying with exponential backoff
-      const waitTime = delay * Math.pow(2, attempt);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-    }
-  }
-
-  throw lastError;
-}
-
-// Enhanced API client with improved error handling and retry logic
-export const apiClient = {
-  async request<T>(
-    endpoint: string, 
-    options: RequestInit & { requestId?: string; retries?: number } = {}
-  ): Promise<T> {
-    const { requestId = `${Date.now()}-${Math.random()}`, retries, ...fetchOptions } = options;
-    const url = `${apiConfig.baseURL}${endpoint}`;
-    
-    const controller = requestCancellation.createController(requestId);
-    
-    const config: RequestInit = {
-      ...fetchOptions,
-      signal: controller.signal,
-      headers: {
-        ...apiConfig.headers,
-        ...fetchOptions.headers,
-      },
-    };
-
-    console.log(`API Request: ${config.method || 'GET'} ${url}`);
-    
-    return withRetry(async () => {
-      try {
-        const response = await fetch(url, config);
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          const isRetryable = response.status >= 500 || response.status === 429; // Server errors or rate limiting
-          
-          throw new ApiError(
-            errorData.message || `HTTP ${response.status}: ${response.statusText}`,
-            response.status,
-            errorData,
-            isRetryable
-          );
-        }
-        
-        const data = await response.json();
-        requestCancellation.cancelRequest(requestId); // Clean up successful request
-        return data;
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          throw new ApiError('Request was cancelled', 0, null, false);
-        }
-        if (error instanceof ApiError) {
-          throw error;
-        }
-        console.error('API Request failed:', error);
-        throw new ApiError('Network error or server unavailable', 0, null, true);
-      }
-    }, retries);
   },
-
-  async get<T>(endpoint: string, options?: RequestInit & { requestId?: string }): Promise<T> {
-    return apiClient.request<T>(endpoint, { ...options, method: 'GET' });
-  },
-
-  async post<T>(endpoint: string, data?: any, options?: RequestInit & { requestId?: string }): Promise<T> {
-    return apiClient.request<T>(endpoint, {
-      ...options,
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
+  cancelAll: () => {
+    requestCancellation.tokens.forEach((controller) => {
+      controller.abort();
     });
-  },
-
-  async put<T>(endpoint: string, data?: any, options?: RequestInit & { requestId?: string }): Promise<T> {
-    return apiClient.request<T>(endpoint, {
-      ...options,
-      method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
-    });
-  },
-
-  async delete<T>(endpoint: string, options?: RequestInit & { requestId?: string }): Promise<T> {
-    return apiClient.request<T>(endpoint, { ...options, method: 'DELETE' });
+    requestCancellation.tokens.clear();
   },
 };
+
+class ApiClient {
+  private baseURL: string;
+  private defaultTimeout: number;
+  private maxRetries: number;
+  private instance: AxiosInstance;
+
+  constructor() {
+    this.baseURL = environment.apiBaseUrl;
+    this.defaultTimeout = 10000;
+    this.maxRetries = environment.retryAttempts;
+
+    this.instance = axios.create({
+      baseURL: this.baseURL,
+      timeout: this.defaultTimeout,
+    });
+    
+    logger.info('API Client initialized', 'ApiClient', {
+      baseURL: this.baseURL,
+      environment: environment.isDevelopment ? 'development' : 'production',
+      mockApi: environment.enableMockApi
+    });
+  }
+
+  private shouldRetry(error: AxiosError, attempt: number): boolean {
+    if (attempt > this.maxRetries) {
+      return false;
+    }
+
+    if (error.response?.status === 429) {
+      // Retry after a delay if rate limited
+      return true;
+    }
+
+    if (error.code === 'ECONNABORTED') {
+      // Retry if request timed out
+      return true;
+    }
+
+    return false;
+  }
+
+  private async makeRequest<T>(
+    url: string,
+    options: RequestOptions = {}
+  ): Promise<T> {
+    const { requestId, ...axiosOptions } = options;
+    const fullUrl = url.startsWith('http') ? url : `${this.baseURL}${url}`;
+    const startTime = performance.now();
+    
+    logger.apiRequest(axiosOptions.method || 'GET', fullUrl, axiosOptions.data);
+
+    const attempt = axiosOptions.headers?.['x-retry-attempt'] ? parseInt(axiosOptions.headers['x-retry-attempt'] as string, 10) : 0;
+    const abortController = new AbortController();
+
+    if (requestId) {
+      requestCancellation.add(requestId, abortController);
+    }
+
+    try {
+      const response: AxiosResponse<T> = await this.instance(fullUrl, {
+        ...axiosOptions,
+        signal: abortController.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(axiosOptions.headers || {}),
+        },
+      });
+
+      const duration = performance.now() - startTime;
+      logger.performance(`API ${axiosOptions.method || 'GET'} ${url}`, duration, 'API');
+
+      logger.apiResponse(axiosOptions.method || 'GET', fullUrl, response.status, response.data);
+      return response.data;
+    } catch (error: any) {
+      const axiosError = error as AxiosError;
+
+      if (this.shouldRetry(axiosError, attempt)) {
+        const delayTime = attempt * 1000;
+        logger.warn(`Retrying request to ${fullUrl} in ${delayTime}ms (attempt ${attempt + 1})`, 'API', {
+          status: axiosError.response?.status,
+          message: axiosError.message,
+        });
+
+        await new Promise(resolve => setTimeout(resolve, delayTime));
+
+        return this.makeRequest(url, {
+          ...axiosOptions,
+          headers: {
+            ...axiosOptions.headers,
+            'x-retry-attempt': attempt + 1,
+          },
+        });
+      }
+
+      const apiError = new ApiError(
+        axiosError.message || 'Request failed',
+        axiosError.response?.status,
+        axiosError.response?.data
+      );
+      logger.apiError(axiosOptions.method || 'GET', fullUrl, apiError);
+      throw apiError;
+    } finally {
+      if (requestId) {
+        requestCancellation.remove(requestId);
+      }
+    }
+  }
+
+  async get<T>(url: string, options: RequestOptions = {}): Promise<T> {
+    return this.makeRequest<T>(url, { ...options, method: 'GET' });
+  }
+
+  async post<T>(url: string, data: any, options: RequestOptions = {}): Promise<T> {
+    return this.makeRequest<T>(url, { ...options, method: 'POST', data });
+  }
+
+  async put<T>(url: string, data: any, options: RequestOptions = {}): Promise<T> {
+    return this.makeRequest<T>(url, { ...options, method: 'PUT', data });
+  }
+
+  async delete<T>(url: string, options: RequestOptions = {}): Promise<T> {
+    return this.makeRequest<T>(url, { ...options, method: 'DELETE' });
+  }
+}
+
+export const apiClient = new ApiClient();
+export { requestCancellation };
