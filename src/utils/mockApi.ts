@@ -44,7 +44,10 @@ export const postToMockApi = async <T>(endpoint: string, data: any): Promise<Api
   }
 };
 
-// Specific API endpoints
+// Development flag to use mock data
+export const USE_MOCK_API = import.meta.env.DEV && !import.meta.env.VITE_API_BASE_URL;
+
+// Mock API endpoints for development
 export const mockApiEndpoints = {
   nodes: '/api/nodes',
   agents: '/api/agents', 
