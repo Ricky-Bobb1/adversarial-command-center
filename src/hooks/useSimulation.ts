@@ -24,9 +24,9 @@ export const useSimulationStatus = (simulationId: string, enabled = true) => {
     queryKey: ['simulation-status', simulationId],
     queryFn: () => simulationService.getSimulationStatus(simulationId),
     enabled: !!simulationId && enabled,
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Poll every 2 seconds if simulation is running
-      return data?.status === 'running' ? 2000 : false;
+      return query.state.data?.status === 'running' ? 2000 : false;
     },
   });
 };

@@ -1,47 +1,54 @@
 
-export interface SimulationConfig {
+export interface SimulationResult {
+  id: string;
+  name: string;
+  description?: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
   scenario: string;
-  duration_minutes: number;
-  agent_count: number;
-  network_topology: 'star' | 'mesh' | 'ring' | 'tree';
-  attack_intensity: 'low' | 'medium' | 'high';
-  defense_enabled: boolean;
+  agents: string[];
+  network_nodes: string[];
+  results?: {
+    summary: string;
+    vulnerabilities_found: number;
+    attacks_successful: number;
+    defenses_triggered: number;
+    duration_seconds: number;
+  };
+  logs: Array<{
+    timestamp: string;
+    agent_id: string;
+    action: string;
+    outcome: string;
+    severity: 'info' | 'warning' | 'error';
+  }>;
+  created_at: string;
+  updated_at: string;
+  completed_at?: string;
 }
 
 export interface SimulationStatus {
   id: string;
   status: 'pending' | 'running' | 'completed' | 'failed';
-  progress: number;
-  start_time?: string;
-  end_time?: string;
-  message?: string;
-}
-
-export interface SimulationResult {
-  id: string;
-  config: SimulationConfig;
-  status: SimulationStatus;
-  metrics: {
-    attacks_detected: number;
-    attacks_blocked: number;
-    false_positives: number;
-    system_performance: number;
-    network_latency: number;
-  };
-  timeline: Array<{
-    timestamp: string;
-    event_type: 'attack' | 'defense' | 'system';
-    description: string;
-    severity: 'low' | 'medium' | 'high';
-  }>;
-  created_at: string;
+  progress_percentage: number;
+  current_phase: string;
+  estimated_completion?: string;
+  error_message?: string;
 }
 
 export interface CreateSimulationRequest {
-  config: SimulationConfig;
+  name: string;
+  description?: string;
+  scenario: string;
+  agent_ids: string[];
+  network_node_ids: string[];
+  config?: {
+    duration_limit?: number;
+    auto_stop_conditions?: string[];
+  };
 }
 
 export interface CreateSimulationResponse {
-  simulation_id: string;
-  status: SimulationStatus;
+  id: string;
+  status: SimulationStatus['status'];
+  message: string;
 }
