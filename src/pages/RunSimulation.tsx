@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,15 +49,6 @@ const RunSimulation = () => {
 
     loadScenarios();
   }, [toast]);
-
-  // Sample scenarios (would normally come from saved configurations)
-  const scenarios = [
-    "Hospital Network Security Assessment",
-    "Emergency Response System Test",
-    "Patient Data Protection Scenario",
-    "Medical Device Network Penetration Test",
-    "Pharmacy System Security Evaluation"
-  ];
 
   // Sample log data for simulation
   const sampleLogs: Omit<LogEntry, 'timestamp'>[] = [
