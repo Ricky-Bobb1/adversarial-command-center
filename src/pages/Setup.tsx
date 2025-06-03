@@ -1,100 +1,296 @@
 
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Wrench, Database, Shield, Network } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Plus, Save, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+interface Node {
+  id: string;
+  name: string;
+  type: string;
+  services: string[];
+  vulnerabilities: string;
+  capabilities: string;
+}
 
 const Setup = () => {
+  const { toast } = useToast();
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [editingNode, setEditingNode] = useState<Node | null>(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    type: "",
+    services: "",
+    vulnerabilities: "",
+    capabilities: ""
+  });
+
+  const nodeTypes = ["Human", "Software", "Hardware"];
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      type: "",
+      services: "",
+      vulnerabilities: "",
+      capabilities: ""
+    });
+    setEditingNode(null);
+  };
+
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Node name is required",
+        variant: "destructive",
+      });
+      return false;
+    }
+    if (!formData.type) {
+      toast({
+        title: "Validation Error",
+        description: "Node type is required",
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const addNode = () => {
+    if (!validateForm()) return;
+
+    const newNode: Node = {
+      id: Date.now().toString(),
+      name: formData.name,
+      type: formData.type,
+      services: formData.services ? formData.services.split(',').map(s => s.trim()) : [],
+      vulnerabilities: formData.vulnerabilities,
+      capabilities: formData.capabilities
+    };
+
+    if (editingNode) {
+      setNodes(nodes.map(node => node.id === editingNode.id ? { ...newNode, id: editingNode.id } : node));
+      toast({
+        title: "Node Updated",
+        description: `Node "${formData.name}" has been updated successfully`,
+      });
+    } else {
+      setNodes([...nodes, newNode]);
+      toast({
+        title: "Node Added",
+        description: `Node "${formData.name}" has been added successfully`,
+      });
+    }
+
+    resetForm();
+  };
+
+  const editNode = (node: Node) => {
+    setFormData({
+      name: node.name,
+      type: node.type,
+      services: node.services.join(', '),
+      vulnerabilities: node.vulnerabilities,
+      capabilities: node.capabilities
+    });
+    setEditingNode(node);
+  };
+
+  const removeNode = (id: string) => {
+    setNodes(nodes.filter(node => node.id !== id));
+    toast({
+      title: "Node Removed",
+      description: "Node has been removed from configuration",
+    });
+  };
+
+  const saveConfiguration = () => {
+    if (nodes.length === 0) {
+      toast({
+        title: "Configuration Error",
+        description: "Please add at least one node before saving",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Configuration Saved",
+      description: `Successfully saved configuration with ${nodes.length} nodes`,
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Setup</h1>
-        <p className="text-gray-600 mt-2">Configure your adversarial AI system environment</p>
+        <h1 className="text-3xl font-bold text-gray-900">Setup - Hospital Infrastructure</h1>
+        <p className="text-gray-600 mt-2">Model your hospital's infrastructure by defining nodes and their configurations</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Node Configuration Form */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5 text-blue-500" />
-              Environment Configuration
+            <CardTitle>
+              {editingNode ? "Edit Node" : "Add New Node"}
             </CardTitle>
-            <CardDescription>Set up the simulation environment parameters</CardDescription>
+            <CardDescription>
+              Define the characteristics and vulnerabilities of hospital infrastructure components
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button variant="outline" className="w-full justify-start">
-              Configure Data Sources
-            </Button>
-            <Button variant="outline" className="w-full justify-start">
-              Set Environment Variables
-            </Button>
-            <Button variant="outline" className="w-full justify-start">
-              Initialize Databases
-            </Button>
+            <div className="space-y-2">
+              <Label htmlFor="nodeName">Node Name</Label>
+              <Input
+                id="nodeName"
+                placeholder="e.g., Main Server, MRI Machine, Dr. Smith"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="nodeType">Node Type</Label>
+              <Select value={formData.type} onValueChange={(value) => setFormData({...formData, type: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select node type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {nodeTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="services">Services Running</Label>
+              <Input
+                id="services"
+                placeholder="e.g., PACS, EMR, Database (comma-separated)"
+                value={formData.services}
+                onChange={(e) => setFormData({...formData, services: e.target.value})}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="vulnerabilities">Known Vulnerabilities</Label>
+              <Input
+                id="vulnerabilities"
+                placeholder="e.g., CVE-2024-1234, CVE-2023-5678"
+                value={formData.vulnerabilities}
+                onChange={(e) => setFormData({...formData, vulnerabilities: e.target.value})}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="capabilities">Capabilities / Role</Label>
+              <Textarea
+                id="capabilities"
+                placeholder="Describe the node's role, access levels, and capabilities in the hospital network"
+                value={formData.capabilities}
+                onChange={(e) => setFormData({...formData, capabilities: e.target.value})}
+                rows={3}
+              />
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <Button onClick={addNode} className="flex-1">
+                <Plus className="h-4 w-4 mr-2" />
+                {editingNode ? "Update Node" : "Add Node"}
+              </Button>
+              {editingNode && (
+                <Button variant="outline" onClick={resetForm}>
+                  Cancel
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
 
+        {/* JSON Preview */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-green-500" />
-              Security Settings
-            </CardTitle>
-            <CardDescription>Configure security and access controls</CardDescription>
+            <CardTitle>Configuration Preview</CardTitle>
+            <CardDescription>JSON representation of your hospital infrastructure model</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Button variant="outline" className="w-full justify-start">
-              Set Authentication
-            </Button>
-            <Button variant="outline" className="w-full justify-start">
-              Configure Permissions
-            </Button>
-            <Button variant="outline" className="w-full justify-start">
-              Enable Audit Logging
-            </Button>
+          <CardContent>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <pre className="text-sm overflow-auto max-h-96">
+                {JSON.stringify({ nodes }, null, 2)}
+              </pre>
+            </div>
           </CardContent>
         </Card>
+      </div>
 
+      {/* Nodes Table */}
+      {nodes.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Network className="h-5 w-5 text-purple-500" />
-              Network Configuration
-            </CardTitle>
-            <CardDescription>Set up network and communication settings</CardDescription>
+            <CardTitle>Configured Nodes</CardTitle>
+            <CardDescription>Overview of all defined hospital infrastructure nodes</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Button variant="outline" className="w-full justify-start">
-              Configure API Endpoints
-            </Button>
-            <Button variant="outline" className="w-full justify-start">
-              Set Network Policies
-            </Button>
-            <Button variant="outline" className="w-full justify-start">
-              Test Connectivity
-            </Button>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Node Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Services</TableHead>
+                  <TableHead>Vulnerabilities</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {nodes.map((node) => (
+                  <TableRow key={node.id}>
+                    <TableCell className="font-medium">{node.name}</TableCell>
+                    <TableCell>{node.type}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {node.services.map((service, index) => (
+                          <span key={index} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                            {service}
+                          </span>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-red-600">{node.vulnerabilities || "None"}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => editNode(node)}>
+                          Edit
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => removeNode(node.id)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
+      )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Wrench className="h-5 w-5 text-orange-500" />
-              System Initialization
-            </CardTitle>
-            <CardDescription>Initialize and validate system components</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button variant="outline" className="w-full justify-start">
-              Run System Checks
-            </Button>
-            <Button variant="outline" className="w-full justify-start">
-              Validate Configuration
-            </Button>
-            <Button className="w-full">
-              Complete Setup
-            </Button>
-          </CardContent>
-        </Card>
+      {/* Save Configuration */}
+      <div className="flex justify-end">
+        <Button onClick={saveConfiguration} size="lg" disabled={nodes.length === 0}>
+          <Save className="h-4 w-4 mr-2" />
+          Save Configuration
+        </Button>
       </div>
     </div>
   );
