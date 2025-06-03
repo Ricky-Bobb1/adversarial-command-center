@@ -18,7 +18,7 @@ const Index = () => {
           </div>
           <div className="text-left">
             <h1 className="text-6xl font-bold bg-gradient-to-r from-blue-200 via-white to-purple-200 bg-clip-text text-transparent mb-2">
-              Adversarial Agentic AI System
+              Adversa Agentic AI
             </h1>
             <div className="h-1 w-48 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full" />
           </div>

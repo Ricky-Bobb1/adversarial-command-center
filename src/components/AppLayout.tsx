@@ -18,7 +18,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">A³</span>
               </div>
-              <h1 className="text-xl font-semibold text-gray-900">Adversarial Agentic AI System</h1>
+              <h1 className="text-xl font-semibold text-gray-900">Adversa Agentic AI</h1>
             </div>
           </header>
           <div className="flex-1 p-6">
