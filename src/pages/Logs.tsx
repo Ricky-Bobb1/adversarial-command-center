@@ -1,12 +1,15 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileText, Download, Search, Filter } from "lucide-react";
+import { FileText, Download, Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useDebounce } from "@/hooks/useDebounce";
+import { usePagination } from "@/hooks/usePagination";
 import { fetchMockData, postToMockApi, mockApiEndpoints } from "@/utils/mockApi";
 
 interface LogEntry {
@@ -22,6 +25,8 @@ interface LogsData {
   logs: LogEntry[];
 }
 
+const ITEMS_PER_PAGE = 20;
+
 const Logs = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,6 +34,10 @@ const Logs = () => {
   const [resultFilter, setResultFilter] = useState("all");
   const [allLogs, setAllLogs] = useState<LogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Debounce search term to avoid excessive filtering
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // Load logs from mock data
   useEffect(() => {
@@ -51,14 +60,33 @@ const Logs = () => {
     loadLogs();
   }, [toast]);
 
-  // Filter logs based on search term and filters
-  const filteredLogs = allLogs.filter(log => {
-    const matchesSearch = log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.targetNode.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesAgent = agentFilter === "all" || log.agent === agentFilter;
-    const matchesResult = resultFilter === "all" || log.result === resultFilter;
-    
-    return matchesSearch && matchesAgent && matchesResult;
+  // Memoized filtered logs to avoid recalculation on every render
+  const filteredLogs = useMemo(() => {
+    return allLogs.filter(log => {
+      const matchesSearch = log.action.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                           log.targetNode.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+      const matchesAgent = agentFilter === "all" || log.agent === agentFilter;
+      const matchesResult = resultFilter === "all" || log.result === resultFilter;
+      
+      return matchesSearch && matchesAgent && matchesResult;
+    });
+  }, [allLogs, debouncedSearchTerm, agentFilter, resultFilter]);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm, agentFilter, resultFilter]);
+
+  // Pagination
+  const {
+    currentData: paginatedLogs,
+    totalPages,
+    hasNextPage,
+    hasPreviousPage
+  } = usePagination({
+    data: filteredLogs,
+    itemsPerPage: ITEMS_PER_PAGE,
+    currentPage
   });
 
   const getAgentColor = (agent: string) => {
@@ -71,14 +99,12 @@ const Logs = () => {
 
   const handleDownloadCSV = async () => {
     try {
-      // Post export request to mock API
       await postToMockApi(mockApiEndpoints.logs, {
         action: 'export_csv',
-        filters: { searchTerm, agentFilter, resultFilter },
+        filters: { searchTerm: debouncedSearchTerm, agentFilter, resultFilter },
         timestamp: new Date().toISOString()
       });
 
-      // Create CSV content
       const headers = ["Timestamp", "Agent", "Action", "Target Node", "Result"];
       const csvContent = [
         headers.join(","),
@@ -91,7 +117,6 @@ const Logs = () => {
         ].join(","))
       ].join("\n");
 
-      // Create and trigger download
       const blob = new Blob([csvContent], { type: "text/csv" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -133,7 +158,11 @@ const Logs = () => {
           <h1 className="text-3xl font-bold text-gray-900">Simulation Logs</h1>
           <p className="text-gray-600 mt-2">Detailed logs from simulation runs with filtering and search</p>
         </div>
-        <Button onClick={handleDownloadCSV} className="flex items-center gap-2">
+        <Button 
+          onClick={handleDownloadCSV} 
+          className="flex items-center gap-2"
+          aria-label="Download logs as CSV file"
+        >
           <Download className="h-4 w-4" />
           Download CSV
         </Button>
@@ -157,11 +186,12 @@ const Logs = () => {
                 className="pl-10"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                aria-label="Search logs by action or target node"
               />
             </div>
             
             <Select value={agentFilter} onValueChange={setAgentFilter}>
-              <SelectTrigger>
+              <SelectTrigger aria-label="Filter by agent type">
                 <SelectValue placeholder="All Agents" />
               </SelectTrigger>
               <SelectContent>
@@ -172,7 +202,7 @@ const Logs = () => {
             </Select>
 
             <Select value={resultFilter} onValueChange={setResultFilter}>
-              <SelectTrigger>
+              <SelectTrigger aria-label="Filter by result type">
                 <SelectValue placeholder="All Results" />
               </SelectTrigger>
               <SelectContent>
@@ -183,7 +213,7 @@ const Logs = () => {
             </Select>
 
             <div className="flex items-center justify-center">
-              <Badge variant="outline">
+              <Badge variant="outline" aria-label={`Showing ${filteredLogs.length} of ${allLogs.length} total entries`}>
                 {filteredLogs.length} of {allLogs.length} entries
               </Badge>
             </div>
@@ -213,14 +243,14 @@ const Logs = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLogs.length === 0 ? (
+                {paginatedLogs.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                       No logs match your current filters
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredLogs.map((log) => (
+                  paginatedLogs.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell className="font-mono text-sm">
                         {log.timestamp}
@@ -247,6 +277,37 @@ const Logs = () => {
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-gray-600">
+                Page {currentPage} of {totalPages}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => prev - 1)}
+                  disabled={!hasPreviousPage}
+                  aria-label="Go to previous page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  disabled={!hasNextPage}
+                  aria-label="Go to next page"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -255,7 +316,9 @@ const Logs = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{allLogs.length}</div>
+              <div className="text-2xl font-bold text-gray-900" aria-label={`${allLogs.length} total log entries`}>
+                {allLogs.length}
+              </div>
               <div className="text-sm text-gray-500">Total Entries</div>
             </div>
           </CardContent>
@@ -263,7 +326,7 @@ const Logs = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">
+              <div className="text-2xl font-bold text-red-600" aria-label={`${allLogs.filter(log => log.agent === "Red").length} red agent actions`}>
                 {allLogs.filter(log => log.agent === "Red").length}
               </div>
               <div className="text-sm text-gray-500">Red Actions</div>
@@ -273,7 +336,7 @@ const Logs = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-blue-600" aria-label={`${allLogs.filter(log => log.agent === "Blue").length} blue agent actions`}>
                 {allLogs.filter(log => log.agent === "Blue").length}
               </div>
               <div className="text-sm text-gray-500">Blue Actions</div>
@@ -283,7 +346,7 @@ const Logs = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-green-600" aria-label={`${((allLogs.filter(log => log.result === "Success").length / allLogs.length) * 100).toFixed(1)}% success rate`}>
                 {((allLogs.filter(log => log.result === "Success").length / allLogs.length) * 100).toFixed(1)}%
               </div>
               <div className="text-sm text-gray-500">Success Rate</div>
