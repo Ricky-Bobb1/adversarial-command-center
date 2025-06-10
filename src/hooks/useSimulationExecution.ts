@@ -1,4 +1,3 @@
-
 import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { postToMockApi, mockApiEndpoints } from "@/utils/mockApi";
@@ -6,6 +5,7 @@ import { useSimulationContext } from "@/contexts/SimulationContext";
 import { SimulationLogic } from "@/services/simulationLogic";
 import { validateScenario } from "@/utils/validation";
 import { SIMULATION_CONSTANTS, TOAST_MESSAGES } from "@/constants/simulation";
+import { simulationResultsService } from "@/services/simulationResultsService";
 
 export const useSimulationExecution = () => {
   const { toast } = useToast();
@@ -52,6 +52,16 @@ export const useSimulationExecution = () => {
           if (intervalRef.current) {
             clearInterval(intervalRef.current);
           }
+          
+          // Save simulation results when complete
+          const metrics = simulationResultsService.calculateMetrics(state.logs);
+          simulationResultsService.saveResults({
+            logs: state.logs,
+            metrics,
+            timestamp: new Date().toISOString(),
+            scenario: selectedScenario,
+          });
+          
           toast({
             title: TOAST_MESSAGES.SIMULATION_COMPLETE,
             description: "The adversarial simulation has finished successfully",

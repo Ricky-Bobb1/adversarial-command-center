@@ -1,54 +1,112 @@
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Download, Eye, BarChart3, FileText, FileImage, Clock, Target, Shield, AlertTriangle } from "lucide-react";
+import { Activity, Download, Eye, BarChart3, FileText, FileImage, Clock, Target, Shield, AlertTriangle, AlertCircle } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { useToast } from "@/hooks/use-toast";
+import { simulationResultsService } from "@/services/simulationResultsService";
+import type { LogEntry, SimulationMetrics } from "@/types/simulation";
 
 const Results = () => {
   const { toast } = useToast();
+  const [latestResult, setLatestResult] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data for metrics
-  const metrics = {
-    timeToDetect: "2.3 minutes",
-    redScore: 78,
-    blueScore: 85,
-    nodesCompromised: 12
-  };
+  useEffect(() => {
+    const loadResults = () => {
+      try {
+        setIsLoading(true);
+        const result = simulationResultsService.getLatestResult();
+        setLatestResult(result);
+      } catch (error) {
+        toast({
+          title: "Failed to Load Results",
+          description: "Could not load simulation results",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // Mock data for timeline chart
-  const timelineData = [
-    { time: '00:00', redActions: 0, blueActions: 1 },
-    { time: '00:30', redActions: 2, blueActions: 1 },
-    { time: '01:00', redActions: 5, blueActions: 3 },
-    { time: '01:30', redActions: 8, blueActions: 6 },
-    { time: '02:00', redActions: 12, blueActions: 10 },
-    { time: '02:30', redActions: 15, blueActions: 14 },
-    { time: '03:00', redActions: 18, blueActions: 18 },
-    { time: '03:30', redActions: 20, blueActions: 22 },
-    { time: '04:00', redActions: 22, blueActions: 25 }
-  ];
+    loadResults();
+  }, [toast]);
 
-  // Mock data for node heatmap (as bar chart)
-  const nodeHeatmapData = [
-    { node: 'EMR Server', attacks: 15, severity: 'Critical' },
-    { node: 'Database', attacks: 12, severity: 'High' },
-    { node: 'Workstation-A', attacks: 8, severity: 'Medium' },
-    { node: 'Pharmacy System', attacks: 6, severity: 'High' },
-    { node: 'Medical Device', attacks: 4, severity: 'Low' },
-    { node: 'Backup Server', attacks: 3, severity: 'Medium' }
-  ];
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading results...</p>
+        </div>
+      </div>
+    );
+  }
 
-  // Mock data for attack types
-  const attackTypesData = [
-    { name: 'SQL Injection', value: 35, color: '#ef4444' },
-    { name: 'Phishing', value: 25, color: '#f97316' },
-    { name: 'Privilege Escalation', value: 20, color: '#eab308' },
-    { name: 'Lateral Movement', value: 15, color: '#3b82f6' },
-    { name: 'Data Exfiltration', value: 5, color: '#8b5cf6' }
-  ];
+  if (!latestResult) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Simulation Results</h1>
+          <p className="text-gray-600 mt-2">Comprehensive analysis of adversarial simulations</p>
+        </div>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Simulation Results</h3>
+              <p className="text-gray-600 mb-4">
+                Run a simulation first to see results here. Go to the Run Simulation page to start.
+              </p>
+              <Button onClick={() => window.location.href = '/run'}>
+                Run Simulation
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const { logs, metrics, timestamp, scenario } = latestResult;
+
+  // Generate timeline data from logs
+  const timelineData = logs.reduce((acc: any[], log: LogEntry, index: number) => {
+    const timePoint = Math.floor(index / 5) * 5; // Group by 5-log intervals
+    const existing = acc.find(item => item.time === timePoint);
+    
+    if (existing) {
+      if (log.agent === 'Red') existing.redActions++;
+      if (log.agent === 'Blue') existing.blueActions++;
+    } else {
+      acc.push({
+        time: timePoint,
+        redActions: log.agent === 'Red' ? 1 : 0,
+        blueActions: log.agent === 'Blue' ? 1 : 0,
+      });
+    }
+    return acc;
+  }, []);
+
+  // Generate attack types from logs
+  const actionCounts = logs.reduce((acc: any, log: LogEntry) => {
+    if (log.agent === 'Red') {
+      acc[log.action] = (acc[log.action] || 0) + 1;
+    }
+    return acc;
+  }, {});
+
+  const attackTypesData = Object.entries(actionCounts)
+    .map(([action, count], index) => ({
+      name: action,
+      value: count as number,
+      color: ['#ef4444', '#f97316', '#eab308', '#3b82f6', '#8b5cf6'][index % 5]
+    }))
+    .slice(0, 5);
 
   const chartConfig = {
     redActions: {
@@ -68,52 +126,22 @@ const Results = () => {
     });
   };
 
-  const results = [
-    { 
-      id: 1, 
-      name: "Adversarial Training #234", 
-      status: "Completed", 
-      date: "2024-06-03 14:30",
-      duration: "45:23",
-      success_rate: "94.2%",
-      severity: "Medium"
-    },
-    { 
-      id: 2, 
-      name: "Defense Stress Test #445", 
-      status: "Completed", 
-      date: "2024-06-03 09:15",
-      duration: "1:12:45",
-      success_rate: "87.8%",
-      severity: "High"
-    },
-    { 
-      id: 3, 
-      name: "Multi-Agent Coordination", 
-      status: "Failed", 
-      date: "2024-06-02 16:22",
-      duration: "23:11",
-      success_rate: "12.5%",
-      severity: "Critical"
-    },
-  ];
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case "Low": return "bg-green-100 text-green-800";
-      case "Medium": return "bg-yellow-100 text-yellow-800";
-      case "High": return "bg-orange-100 text-orange-800";
-      case "Critical": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
+  const formatDate = (isoString: string) => {
+    return new Date(isoString).toLocaleString();
   };
+
+  const successRate = logs.length > 0 
+    ? ((logs.filter(log => log.outcome.toLowerCase().includes('success')).length / logs.length) * 100).toFixed(1)
+    : '0';
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Simulation Results</h1>
-          <p className="text-gray-600 mt-2">Comprehensive analysis of the latest adversarial simulation</p>
+          <p className="text-gray-600 mt-2">
+            Analysis of simulation: {scenario} (Run on {formatDate(timestamp)})
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => handleExport('json')} className="flex items-center gap-2">
@@ -133,12 +161,12 @@ const Results = () => {
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
               <Clock className="h-5 w-5 text-blue-600" />
-              Time to Detect
+              Duration
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{metrics.timeToDetect}</div>
-            <p className="text-sm text-gray-500">Average detection time</p>
+            <div className="text-3xl font-bold text-blue-600">{metrics?.duration || 0}s</div>
+            <p className="text-sm text-gray-500">Simulation runtime</p>
           </CardContent>
         </Card>
 
@@ -146,12 +174,12 @@ const Results = () => {
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
               <Target className="h-5 w-5 text-red-600" />
-              Red Score
+              Red Actions
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-600">{metrics.redScore}%</div>
-            <p className="text-sm text-gray-500">Attack success rate</p>
+            <div className="text-3xl font-bold text-red-600">{metrics?.redActions || 0}</div>
+            <p className="text-sm text-gray-500">Attack attempts</p>
           </CardContent>
         </Card>
 
@@ -159,12 +187,12 @@ const Results = () => {
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
               <Shield className="h-5 w-5 text-blue-600" />
-              Blue Score
+              Blue Actions
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{metrics.blueScore}%</div>
-            <p className="text-sm text-gray-500">Defense effectiveness</p>
+            <div className="text-3xl font-bold text-blue-600">{metrics?.blueActions || 0}</div>
+            <p className="text-sm text-gray-500">Defense responses</p>
           </CardContent>
         </Card>
 
@@ -172,12 +200,12 @@ const Results = () => {
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-orange-600" />
-              Nodes Compromised
+              Success Rate
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-orange-600">{metrics.nodesCompromised}</div>
-            <p className="text-sm text-gray-500">Out of 50 total nodes</p>
+            <div className="text-3xl font-bold text-orange-600">{successRate}%</div>
+            <p className="text-sm text-gray-500">Overall success rate</p>
           </CardContent>
         </Card>
       </div>
@@ -188,7 +216,7 @@ const Results = () => {
         <Card>
           <CardHeader>
             <CardTitle>Attack vs Defense Timeline</CardTitle>
-            <CardDescription>Cumulative actions over simulation time</CardDescription>
+            <CardDescription>Actions over simulation progression</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[300px]">
@@ -222,7 +250,7 @@ const Results = () => {
         <Card>
           <CardHeader>
             <CardTitle>Attack Types Distribution</CardTitle>
-            <CardDescription>Breakdown of attack methods used</CardDescription>
+            <CardDescription>Breakdown of red team actions</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
@@ -250,106 +278,33 @@ const Results = () => {
         </Card>
       </div>
 
-      {/* Node Heatmap */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Most Targeted Nodes</CardTitle>
-          <CardDescription>Number of attacks per infrastructure node</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={nodeHeatmapData} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="node" type="category" width={100} />
-                <Tooltip 
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-white p-3 border rounded shadow">
-                          <p className="font-medium">{label}</p>
-                          <p className="text-sm">
-                            <span className="text-red-600">Attacks: {payload[0].value}</span>
-                          </p>
-                          <p className="text-sm">
-                            <span className="text-gray-600">Severity: {payload[0].payload.severity}</span>
-                          </p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Bar dataKey="attacks" fill="#ef4444" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Historical Results */}
+      {/* Recent Results Summary */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
-            Historical Results
+            Simulation Summary
           </CardTitle>
-          <CardDescription>Previous simulation outcomes and analysis</CardDescription>
+          <CardDescription>Key metrics from the latest simulation run</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {results.map((result) => (
-              <div key={result.id} className="p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-medium text-gray-900">{result.name}</h3>
-                    <p className="text-sm text-gray-500">Completed on {result.date}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge 
-                      variant={result.status === "Completed" ? "default" : "destructive"}
-                      className={result.status === "Completed" ? "bg-green-100 text-green-800" : ""}
-                    >
-                      {result.status}
-                    </Badge>
-                    <Badge className={getSeverityColor(result.severity)}>
-                      {result.severity}
-                    </Badge>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                  <div>
-                    <span className="text-sm text-gray-500">Duration</span>
-                    <p className="font-medium">{result.duration}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-500">Success Rate</span>
-                    <p className="font-medium">{result.success_rate}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-500">Severity</span>
-                    <p className="font-medium">{result.severity}</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="flex items-center gap-1">
-                    <Eye className="h-3 w-3" />
-                    View Details
-                  </Button>
-                  <Button size="sm" variant="outline" className="flex items-center gap-1">
-                    <BarChart3 className="h-3 w-3" />
-                    Analytics
-                  </Button>
-                  <Button size="sm" variant="outline" className="flex items-center gap-1">
-                    <Download className="h-3 w-3" />
-                    Export
-                  </Button>
-                </div>
-              </div>
-            ))}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <span className="text-sm text-gray-500">Total Events</span>
+              <p className="font-medium text-lg">{logs.length}</p>
+            </div>
+            <div>
+              <span className="text-sm text-gray-500">Successful Actions</span>
+              <p className="font-medium text-lg">{logs.filter(log => log.outcome.toLowerCase().includes('success')).length}</p>
+            </div>
+            <div>
+              <span className="text-sm text-gray-500">Failed Actions</span>
+              <p className="font-medium text-lg">{logs.filter(log => !log.outcome.toLowerCase().includes('success')).length}</p>
+            </div>
+            <div>
+              <span className="text-sm text-gray-500">System Events</span>
+              <p className="font-medium text-lg">{metrics?.systemEvents || 0}</p>
+            </div>
           </div>
         </CardContent>
       </Card>

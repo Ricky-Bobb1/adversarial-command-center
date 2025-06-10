@@ -6,24 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileText, Download, Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
+import { FileText, Download, Search, Filter, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePagination } from "@/hooks/usePagination";
-import { fetchMockData, postToMockApi, mockApiEndpoints } from "@/utils/mockApi";
-
-interface LogEntry {
-  id: number;
-  timestamp: string;
-  agent: "Red" | "Blue";
-  action: string;
-  targetNode: string;
-  result: "Success" | "Fail";
-}
-
-interface LogsData {
-  logs: LogEntry[];
-}
+import { simulationResultsService } from "@/services/simulationResultsService";
+import type { LogEntry } from "@/types/simulation";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -31,21 +19,24 @@ const Logs = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [agentFilter, setAgentFilter] = useState("all");
-  const [resultFilter, setResultFilter] = useState("all");
+  const [outcomeFilter, setOutcomeFilter] = useState("all");
   const [allLogs, setAllLogs] = useState<LogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Debounce search term to avoid excessive filtering
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  // Load logs from mock data
+  // Load logs from simulation results
   useEffect(() => {
     const loadLogs = async () => {
       try {
         setIsLoading(true);
-        const data = await fetchMockData<LogsData>('logs');
-        setAllLogs(data.logs);
+        const latestResult = simulationResultsService.getLatestResult();
+        if (latestResult && latestResult.logs) {
+          setAllLogs(latestResult.logs);
+        } else {
+          setAllLogs([]);
+        }
       } catch (error) {
         toast({
           title: "Failed to Load Logs",
@@ -60,22 +51,24 @@ const Logs = () => {
     loadLogs();
   }, [toast]);
 
-  // Memoized filtered logs to avoid recalculation on every render
+  // Memoized filtered logs
   const filteredLogs = useMemo(() => {
     return allLogs.filter(log => {
       const matchesSearch = log.action.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-                           log.targetNode.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+                           log.outcome.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
       const matchesAgent = agentFilter === "all" || log.agent === agentFilter;
-      const matchesResult = resultFilter === "all" || log.result === resultFilter;
+      const matchesOutcome = outcomeFilter === "all" || 
+        (outcomeFilter === "success" && log.outcome.toLowerCase().includes('success')) ||
+        (outcomeFilter === "fail" && !log.outcome.toLowerCase().includes('success'));
       
-      return matchesSearch && matchesAgent && matchesResult;
+      return matchesSearch && matchesAgent && matchesOutcome;
     });
-  }, [allLogs, debouncedSearchTerm, agentFilter, resultFilter]);
+  }, [allLogs, debouncedSearchTerm, agentFilter, outcomeFilter]);
 
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchTerm, agentFilter, resultFilter]);
+  }, [debouncedSearchTerm, agentFilter, outcomeFilter]);
 
   // Pagination
   const {
@@ -90,30 +83,30 @@ const Logs = () => {
   });
 
   const getAgentColor = (agent: string) => {
-    return agent === "Red" ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800";
+    switch (agent) {
+      case "Red": return "bg-red-100 text-red-800";
+      case "Blue": return "bg-blue-100 text-blue-800";
+      case "System": return "bg-gray-100 text-gray-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
   };
 
-  const getResultColor = (result: string) => {
-    return result === "Success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
+  const getOutcomeColor = (outcome: string) => {
+    return outcome.toLowerCase().includes('success') 
+      ? "bg-green-100 text-green-800" 
+      : "bg-red-100 text-red-800";
   };
 
   const handleDownloadCSV = async () => {
     try {
-      await postToMockApi(mockApiEndpoints.logs, {
-        action: 'export_csv',
-        filters: { searchTerm: debouncedSearchTerm, agentFilter, resultFilter },
-        timestamp: new Date().toISOString()
-      });
-
-      const headers = ["Timestamp", "Agent", "Action", "Target Node", "Result"];
+      const headers = ["Timestamp", "Agent", "Action", "Outcome"];
       const csvContent = [
         headers.join(","),
         ...filteredLogs.map(log => [
           log.timestamp,
           log.agent,
           `"${log.action}"`,
-          `"${log.targetNode}"`,
-          log.result
+          `"${log.outcome}"`
         ].join(","))
       ].join("\n");
 
@@ -151,12 +144,38 @@ const Logs = () => {
     );
   }
 
+  if (allLogs.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Simulation Logs</h1>
+          <p className="text-gray-600 mt-2">Detailed logs from simulation runs</p>
+        </div>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Simulation Data</h3>
+              <p className="text-gray-600 mb-4">
+                Run a simulation first to see logs here. Go to the Run Simulation page to start.
+              </p>
+              <Button onClick={() => window.location.href = '/run'}>
+                Run Simulation
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Simulation Logs</h1>
-          <p className="text-gray-600 mt-2">Detailed logs from simulation runs with filtering and search</p>
+          <p className="text-gray-600 mt-2">Detailed logs from the latest simulation run</p>
         </div>
         <Button 
           onClick={handleDownloadCSV} 
@@ -182,11 +201,11 @@ const Logs = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input 
-                placeholder="Search actions or nodes..." 
+                placeholder="Search actions or outcomes..." 
                 className="pl-10"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                aria-label="Search logs by action or target node"
+                aria-label="Search logs by action or outcome"
               />
             </div>
             
@@ -198,22 +217,23 @@ const Logs = () => {
                 <SelectItem value="all">All Agents</SelectItem>
                 <SelectItem value="Red">Red Agent</SelectItem>
                 <SelectItem value="Blue">Blue Agent</SelectItem>
+                <SelectItem value="System">System</SelectItem>
               </SelectContent>
             </Select>
 
-            <Select value={resultFilter} onValueChange={setResultFilter}>
-              <SelectTrigger aria-label="Filter by result type">
-                <SelectValue placeholder="All Results" />
+            <Select value={outcomeFilter} onValueChange={setOutcomeFilter}>
+              <SelectTrigger aria-label="Filter by outcome">
+                <SelectValue placeholder="All Outcomes" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Results</SelectItem>
-                <SelectItem value="Success">Success</SelectItem>
-                <SelectItem value="Fail">Fail</SelectItem>
+                <SelectItem value="all">All Outcomes</SelectItem>
+                <SelectItem value="success">Success</SelectItem>
+                <SelectItem value="fail">Fail</SelectItem>
               </SelectContent>
             </Select>
 
             <div className="flex items-center justify-center">
-              <Badge variant="outline" aria-label={`Showing ${filteredLogs.length} of ${allLogs.length} total entries`}>
+              <Badge variant="outline">
                 {filteredLogs.length} of {allLogs.length} entries
               </Badge>
             </div>
@@ -228,7 +248,7 @@ const Logs = () => {
             <FileText className="h-5 w-5" />
             Simulation Log Entries
           </CardTitle>
-          <CardDescription>Detailed activity log from agent simulations</CardDescription>
+          <CardDescription>Detailed activity log from the latest simulation</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -238,20 +258,19 @@ const Logs = () => {
                   <TableHead>Timestamp</TableHead>
                   <TableHead>Agent</TableHead>
                   <TableHead>Action</TableHead>
-                  <TableHead>Target Node</TableHead>
-                  <TableHead>Result</TableHead>
+                  <TableHead>Outcome</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedLogs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={4} className="text-center py-8 text-gray-500">
                       No logs match your current filters
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedLogs.map((log) => (
-                    <TableRow key={log.id}>
+                  paginatedLogs.map((log, index) => (
+                    <TableRow key={`${log.timestamp}-${index}`}>
                       <TableCell className="font-mono text-sm">
                         {log.timestamp}
                       </TableCell>
@@ -264,11 +283,8 @@ const Logs = () => {
                         {log.action}
                       </TableCell>
                       <TableCell>
-                        {log.targetNode}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getResultColor(log.result)}>
-                          {log.result}
+                        <Badge className={getOutcomeColor(log.outcome)}>
+                          {log.outcome}
                         </Badge>
                       </TableCell>
                     </TableRow>
@@ -316,7 +332,7 @@ const Logs = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900" aria-label={`${allLogs.length} total log entries`}>
+              <div className="text-2xl font-bold text-gray-900">
                 {allLogs.length}
               </div>
               <div className="text-sm text-gray-500">Total Entries</div>
@@ -326,7 +342,7 @@ const Logs = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600" aria-label={`${allLogs.filter(log => log.agent === "Red").length} red agent actions`}>
+              <div className="text-2xl font-bold text-red-600">
                 {allLogs.filter(log => log.agent === "Red").length}
               </div>
               <div className="text-sm text-gray-500">Red Actions</div>
@@ -336,7 +352,7 @@ const Logs = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600" aria-label={`${allLogs.filter(log => log.agent === "Blue").length} blue agent actions`}>
+              <div className="text-2xl font-bold text-blue-600">
                 {allLogs.filter(log => log.agent === "Blue").length}
               </div>
               <div className="text-sm text-gray-500">Blue Actions</div>
@@ -346,8 +362,10 @@ const Logs = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600" aria-label={`${((allLogs.filter(log => log.result === "Success").length / allLogs.length) * 100).toFixed(1)}% success rate`}>
-                {((allLogs.filter(log => log.result === "Success").length / allLogs.length) * 100).toFixed(1)}%
+              <div className="text-2xl font-bold text-green-600">
+                {allLogs.length > 0 ? 
+                  ((allLogs.filter(log => log.outcome.toLowerCase().includes('success')).length / allLogs.length) * 100).toFixed(1)
+                  : 0}%
               </div>
               <div className="text-sm text-gray-500">Success Rate</div>
             </div>
