@@ -7,10 +7,13 @@ import { SimulationLogic } from "@/services/simulationLogic";
 import { validateScenario } from "@/utils/validation";
 import { SIMULATION_CONSTANTS, TOAST_MESSAGES } from "@/constants/simulation";
 import { simulationResultsService } from "@/services/simulationResultsService";
+import { simulationConfigService } from "@/services/simulationConfigService";
+import { useSettings } from "@/contexts/SettingsContext";
 
 export const useSimulationExecution = () => {
   const { toast } = useToast();
   const { state, dispatch } = useSimulationContext();
+  const { useRealApi } = useSettings();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const currentLogsRef = useRef<any[]>([]);
 
@@ -26,11 +29,27 @@ export const useSimulationExecution = () => {
       return;
     }
 
-    try {
-      await postToMockApi(mockApiEndpoints.runSimulation, {
-        scenario: selectedScenario,
-        timestamp: new Date().toISOString()
+    // Check if system is properly configured
+    const configStatus = simulationConfigService.isSystemConfigured();
+    if (!configStatus.configured) {
+      toast({
+        title: "Configuration Incomplete",
+        description: `Missing: ${configStatus.missingItems.join(', ')}`,
+        variant: "destructive",
       });
+      return;
+    }
+
+    try {
+      if (useRealApi) {
+        // TODO: Implement real API call when FastAPI service is ready
+        console.log('Would use real API for simulation execution');
+      } else {
+        await postToMockApi(mockApiEndpoints.runSimulation, {
+          scenario: selectedScenario,
+          timestamp: new Date().toISOString()
+        });
+      }
 
       dispatch({ type: 'SET_RUNNING', payload: true });
       dispatch({ type: 'CLEAR_LOGS' });
@@ -44,14 +63,15 @@ export const useSimulationExecution = () => {
         description: `Running scenario: ${selectedScenario}`,
       });
 
-      const sampleLogs = SimulationLogic.getSampleLogs();
+      // Use configured data to generate dynamic logs
+      const dynamicLogs = simulationConfigService.generateDynamicLogs(selectedScenario);
       let logIndex = 0;
       
       intervalRef.current = setInterval(() => {
-        if (logIndex < sampleLogs.length) {
-          const newLog = SimulationLogic.createLogEntry(sampleLogs[logIndex]);
-          currentLogsRef.current.push(newLog);
-          dispatch({ type: 'ADD_LOG', payload: newLog });
+        if (logIndex < dynamicLogs.length) {
+          const logEntry = SimulationLogic.createLogEntry(dynamicLogs[logIndex]);
+          currentLogsRef.current.push(logEntry);
+          dispatch({ type: 'ADD_LOG', payload: logEntry });
           logIndex++;
         } else {
           dispatch({ type: 'SET_RUNNING', payload: false });

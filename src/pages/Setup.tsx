@@ -151,7 +151,10 @@ const Setup = () => {
 
     try {
       setIsSaving(true);
+      
+      // Save to both mock API and localStorage for integration
       await postToMockApi(mockApiEndpoints.nodes, { nodes });
+      localStorage.setItem('nodes-configuration', JSON.stringify({ nodes }));
       
       toast({
         title: "Configuration Saved",
