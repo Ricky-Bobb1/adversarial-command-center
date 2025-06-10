@@ -110,7 +110,19 @@ class AdversaApiService {
     const response = await apiClient.get(`${this.baseUrl}/api/v1/scenarios`, {
       requestId: 'list-scenarios',
     });
-    return response.scenarios || [];
+    
+    // Handle the response safely with type checking
+    if (response && typeof response === 'object' && 'scenarios' in response) {
+      return (response as { scenarios: string[] }).scenarios || [];
+    }
+    
+    // If response is an array, return it directly
+    if (Array.isArray(response)) {
+      return response;
+    }
+    
+    // Fallback to empty array
+    return [];
   }
 
   // Real-time simulation logs (if supported by the API)
