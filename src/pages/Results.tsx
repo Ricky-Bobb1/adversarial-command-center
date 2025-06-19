@@ -1,13 +1,16 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity, Download, Eye, BarChart3, FileText, FileImage, Clock, Target, Shield, AlertTriangle, AlertCircle } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { useToast } from "@/hooks/use-toast";
 import { simulationResultsService } from "@/services/simulationResultsService";
+import { ComplianceScorecard } from "@/components/ComplianceScorecard";
+import { RegulatoryFramework } from "@/components/RegulatoryFramework";
+import { ComplianceMetrics } from "@/components/ComplianceMetrics";
 import type { LogEntry, SimulationMetrics } from "@/types/simulation";
 
 const Results = () => {
@@ -155,128 +158,151 @@ const Results = () => {
         </div>
       </div>
 
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Clock className="h-5 w-5 text-blue-600" />
-              Duration
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{metrics?.duration || 0}s</div>
-            <p className="text-sm text-gray-500">Simulation runtime</p>
-          </CardContent>
-        </Card>
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="compliance">HIPAA Compliance</TabsTrigger>
+          <TabsTrigger value="frameworks">Regulatory Frameworks</TabsTrigger>
+          <TabsTrigger value="metrics">Compliance Metrics</TabsTrigger>
+        </TabsList>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Target className="h-5 w-5 text-red-600" />
-              Red Actions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-red-600">{metrics?.redActions || 0}</div>
-            <p className="text-sm text-gray-500">Attack attempts</p>
-          </CardContent>
-        </Card>
+        <TabsContent value="overview" className="space-y-6">
+          {/* Metric Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-blue-600" />
+                  Duration
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-blue-600">{metrics?.duration || 0}s</div>
+                <p className="text-sm text-gray-500">Simulation runtime</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Shield className="h-5 w-5 text-blue-600" />
-              Blue Actions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{metrics?.blueActions || 0}</div>
-            <p className="text-sm text-gray-500">Defense responses</p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Target className="h-5 w-5 text-red-600" />
+                  Red Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-red-600">{metrics?.redActions || 0}</div>
+                <p className="text-sm text-gray-500">Attack attempts</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-orange-600" />
-              Success Rate
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-orange-600">{successRate}%</div>
-            <p className="text-sm text-gray-500">Overall success rate</p>
-          </CardContent>
-        </Card>
-      </div>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-blue-600" />
+                  Blue Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-blue-600">{metrics?.blueActions || 0}</div>
+                <p className="text-sm text-gray-500">Defense responses</p>
+              </CardContent>
+            </Card>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Timeline Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Attack vs Defense Timeline</CardTitle>
-            <CardDescription>Actions over simulation progression</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={timelineData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" />
-                  <YAxis />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="redActions" 
-                    stroke="#ef4444" 
-                    strokeWidth={2}
-                    name="Red Team Actions"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="blueActions" 
-                    stroke="#3b82f6" 
-                    strokeWidth={2}
-                    name="Blue Team Actions"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-600" />
+                  Success Rate
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-orange-600">{successRate}%</div>
+                <p className="text-sm text-gray-500">Overall success rate</p>
+              </CardContent>
+            </Card>
+          </div>
 
-        {/* Attack Types Pie Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Attack Types Distribution</CardTitle>
-            <CardDescription>Breakdown of red team actions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={attackTypesData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {attackTypesData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Timeline Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Attack vs Defense Timeline</CardTitle>
+                <CardDescription>Actions over simulation progression</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={timelineData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="time" />
+                      <YAxis />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line 
+                        type="monotone" 
+                        dataKey="redActions" 
+                        stroke="#ef4444" 
+                        strokeWidth={2}
+                        name="Red Team Actions"
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="blueActions" 
+                        stroke="#3b82f6" 
+                        strokeWidth={2}
+                        name="Blue Team Actions"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+
+            {/* Attack Types Pie Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Attack Types Distribution</CardTitle>
+                <CardDescription>Breakdown of red team actions</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={attackTypesData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {attackTypesData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="compliance" className="space-y-6">
+          <ComplianceScorecard logs={logs} />
+        </TabsContent>
+
+        <TabsContent value="frameworks" className="space-y-6">
+          <RegulatoryFramework logs={logs} />
+        </TabsContent>
+
+        <TabsContent value="metrics" className="space-y-6">
+          <ComplianceMetrics logs={logs} timestamp={timestamp} />
+        </TabsContent>
+      </Tabs>
 
       {/* Recent Results Summary */}
       <Card>
