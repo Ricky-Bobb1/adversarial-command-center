@@ -1,3 +1,4 @@
+
 import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { postToMockApi, mockApiEndpoints } from "@/utils/mockApi";
@@ -11,6 +12,7 @@ export const useSimulationExecution = () => {
   const { toast } = useToast();
   const { state, dispatch } = useSimulationContext();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const currentLogsRef = useRef<any[]>([]);
 
   const startSimulation = async (selectedScenario: string) => {
     const validation = validateScenario(selectedScenario);
@@ -34,6 +36,9 @@ export const useSimulationExecution = () => {
       dispatch({ type: 'CLEAR_LOGS' });
       dispatch({ type: 'SET_ERROR', payload: null });
       
+      // Reset the logs ref
+      currentLogsRef.current = [];
+      
       toast({
         title: TOAST_MESSAGES.SIMULATION_STARTED,
         description: `Running scenario: ${selectedScenario}`,
@@ -45,6 +50,7 @@ export const useSimulationExecution = () => {
       intervalRef.current = setInterval(() => {
         if (logIndex < sampleLogs.length) {
           const newLog = SimulationLogic.createLogEntry(sampleLogs[logIndex]);
+          currentLogsRef.current.push(newLog);
           dispatch({ type: 'ADD_LOG', payload: newLog });
           logIndex++;
         } else {
@@ -53,10 +59,12 @@ export const useSimulationExecution = () => {
             clearInterval(intervalRef.current);
           }
           
-          // Save simulation results when complete
-          const metrics = simulationResultsService.calculateMetrics(state.logs);
+          console.log('Simulation complete, saving results with logs:', currentLogsRef.current.length);
+          
+          // Save simulation results when complete using the ref
+          const metrics = simulationResultsService.calculateMetrics(currentLogsRef.current);
           simulationResultsService.saveResults({
-            logs: state.logs,
+            logs: currentLogsRef.current,
             metrics,
             timestamp: new Date().toISOString(),
             scenario: selectedScenario,
@@ -92,6 +100,7 @@ export const useSimulationExecution = () => {
 
   const resetSimulation = () => {
     dispatch({ type: 'RESET_SIMULATION' });
+    currentLogsRef.current = [];
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
