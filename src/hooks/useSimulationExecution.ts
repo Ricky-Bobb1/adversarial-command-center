@@ -1,4 +1,3 @@
-
 import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { postToMockApi, mockApiEndpoints } from "@/utils/mockApi";
@@ -7,15 +6,11 @@ import { SimulationLogic } from "@/services/simulationLogic";
 import { validateScenario } from "@/utils/validation";
 import { SIMULATION_CONSTANTS, TOAST_MESSAGES } from "@/constants/simulation";
 import { simulationResultsService } from "@/services/simulationResultsService";
-import { simulationConfigService } from "@/services/simulationConfigService";
-import { useSettings } from "@/contexts/SettingsContext";
 
 export const useSimulationExecution = () => {
   const { toast } = useToast();
   const { state, dispatch } = useSimulationContext();
-  const { useRealApi } = useSettings();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const currentLogsRef = useRef<any[]>([]);
 
   const startSimulation = async (selectedScenario: string) => {
     const validation = validateScenario(selectedScenario);
@@ -29,49 +24,28 @@ export const useSimulationExecution = () => {
       return;
     }
 
-    // Check if system is properly configured
-    const configStatus = simulationConfigService.isSystemConfigured();
-    if (!configStatus.configured) {
-      toast({
-        title: "Configuration Incomplete",
-        description: `Missing: ${configStatus.missingItems.join(', ')}`,
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
-      if (useRealApi) {
-        // TODO: Implement real API call when FastAPI service is ready
-        console.log('Would use real API for simulation execution');
-      } else {
-        await postToMockApi(mockApiEndpoints.runSimulation, {
-          scenario: selectedScenario,
-          timestamp: new Date().toISOString()
-        });
-      }
+      await postToMockApi(mockApiEndpoints.runSimulation, {
+        scenario: selectedScenario,
+        timestamp: new Date().toISOString()
+      });
 
       dispatch({ type: 'SET_RUNNING', payload: true });
       dispatch({ type: 'CLEAR_LOGS' });
       dispatch({ type: 'SET_ERROR', payload: null });
-      
-      // Reset the logs ref
-      currentLogsRef.current = [];
       
       toast({
         title: TOAST_MESSAGES.SIMULATION_STARTED,
         description: `Running scenario: ${selectedScenario}`,
       });
 
-      // Use configured data to generate dynamic logs
-      const dynamicLogs = simulationConfigService.generateDynamicLogs(selectedScenario);
+      const sampleLogs = SimulationLogic.getSampleLogs();
       let logIndex = 0;
       
       intervalRef.current = setInterval(() => {
-        if (logIndex < dynamicLogs.length) {
-          const logEntry = SimulationLogic.createLogEntry(dynamicLogs[logIndex]);
-          currentLogsRef.current.push(logEntry);
-          dispatch({ type: 'ADD_LOG', payload: logEntry });
+        if (logIndex < sampleLogs.length) {
+          const newLog = SimulationLogic.createLogEntry(sampleLogs[logIndex]);
+          dispatch({ type: 'ADD_LOG', payload: newLog });
           logIndex++;
         } else {
           dispatch({ type: 'SET_RUNNING', payload: false });
@@ -79,12 +53,10 @@ export const useSimulationExecution = () => {
             clearInterval(intervalRef.current);
           }
           
-          console.log('Simulation complete, saving results with logs:', currentLogsRef.current.length);
-          
-          // Save simulation results when complete using the ref
-          const metrics = simulationResultsService.calculateMetrics(currentLogsRef.current);
+          // Save simulation results when complete
+          const metrics = simulationResultsService.calculateMetrics(state.logs);
           simulationResultsService.saveResults({
-            logs: currentLogsRef.current,
+            logs: state.logs,
             metrics,
             timestamp: new Date().toISOString(),
             scenario: selectedScenario,
@@ -120,7 +92,6 @@ export const useSimulationExecution = () => {
 
   const resetSimulation = () => {
     dispatch({ type: 'RESET_SIMULATION' });
-    currentLogsRef.current = [];
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }

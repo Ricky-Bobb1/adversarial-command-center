@@ -6,10 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Save, X, Settings } from "lucide-react";
+import { Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { fetchMockData, postToMockApi, mockApiEndpoints } from "@/utils/mockApi";
-import { useSettings } from "@/contexts/SettingsContext";
 
 interface AgentConfig {
   redAgent: {
@@ -25,7 +24,6 @@ interface AgentConfig {
 
 const Agents = () => {
   const { toast } = useToast();
-  const { useRealApi, setUseRealApi, apiEndpoint, setApiEndpoint } = useSettings();
   const [config, setConfig] = useState<AgentConfig>({
     redAgent: { model: "", strategies: [] },
     blueAgent: { model: "", strategies: [] },
@@ -132,10 +130,7 @@ const Agents = () => {
 
     try {
       setIsSaving(true);
-      
-      // Save to both mock API and localStorage for integration
       await postToMockApi(mockApiEndpoints.agents, config);
-      localStorage.setItem('agent-configuration', JSON.stringify(config));
       
       toast({
         title: "Configuration Saved",
@@ -170,48 +165,6 @@ const Agents = () => {
         <p className="text-gray-600 mt-2">Configure your AI agents and their attack/defense strategies</p>
       </div>
 
-      {/* API Configuration Section */}
-      <Card className="border-orange-200">
-        <CardHeader className="bg-orange-50">
-          <CardTitle className="text-orange-800 flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            API Configuration
-          </CardTitle>
-          <CardDescription>Choose between mock data and real FastAPI service</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 pt-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label htmlFor="useRealApi">Use Real FastAPI Service</Label>
-              <p className="text-sm text-gray-500">
-                {useRealApi ? "Using FastAPI service for agent operations" : "Using mock data for development"}
-              </p>
-            </div>
-            <Switch
-              id="useRealApi"
-              checked={useRealApi}
-              onCheckedChange={setUseRealApi}
-            />
-          </div>
-          
-          {useRealApi && (
-            <div className="space-y-2">
-              <Label htmlFor="apiEndpoint">FastAPI Endpoint</Label>
-              <Input
-                id="apiEndpoint"
-                placeholder="http://localhost:8000"
-                value={apiEndpoint}
-                onChange={(e) => setApiEndpoint(e.target.value)}
-              />
-              <p className="text-sm text-gray-500">
-                Enter the URL of your deployed FastAPI service (AWS SAM or local)
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Red and Blue Agent Panels - keep existing code */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Red Agent Panel */}
         <Card className="border-red-200">
@@ -330,7 +283,7 @@ const Agents = () => {
         </Card>
       </div>
 
-      {/* Human-in-the-Loop Toggle - keep existing code */}
+      {/* Human-in-the-Loop Toggle */}
       <Card>
         <CardHeader>
           <CardTitle>Advanced Configuration</CardTitle>
@@ -354,7 +307,7 @@ const Agents = () => {
         </CardContent>
       </Card>
 
-      {/* Configuration Preview - keep existing code */}
+      {/* Configuration Preview */}
       <Card>
         <CardHeader>
           <CardTitle>Configuration Preview</CardTitle>
@@ -369,7 +322,7 @@ const Agents = () => {
         </CardContent>
       </Card>
 
-      {/* Save Configuration - keep existing code */}
+      {/* Save Configuration */}
       <div className="flex justify-end">
         <Button onClick={saveConfiguration} size="lg" disabled={isSaving}>
           <Save className="h-4 w-4 mr-2" />
