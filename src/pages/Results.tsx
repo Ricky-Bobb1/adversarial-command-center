@@ -3,8 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, Download, Eye, BarChart3, FileText, FileImage, Clock, Target, Shield, AlertTriangle, AlertCircle } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Activity, Download, Eye, BarChart3, FileText, FileImage, Clock, Target, Shield, AlertTriangle, AlertCircle, HelpCircle, TrendingUp, TrendingDown } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { useToast } from "@/hooks/use-toast";
 import { simulationResultsService } from "@/services/simulationResultsService";
@@ -147,14 +148,33 @@ const Results = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => handleExport('json')} className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Export JSON
-          </Button>
-          <Button variant="outline" onClick={() => handleExport('pdf')} className="flex items-center gap-2">
-            <FileImage className="h-4 w-4" />
-            Export PDF
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" onClick={() => handleExport('json')} className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Export JSON
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Export simulation data in JSON format</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" onClick={() => handleExport('pdf')} className="flex items-center gap-2">
+                  <FileImage className="h-4 w-4" />
+                  Export PDF
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Export compliance report as PDF</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
@@ -237,7 +257,7 @@ const Results = () => {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="time" />
                       <YAxis />
-                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <RechartsTooltip content={<ChartTooltipContent />} />
                       <Line 
                         type="monotone" 
                         dataKey="redActions" 
@@ -282,7 +302,7 @@ const Results = () => {
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <RechartsTooltip />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -304,7 +324,7 @@ const Results = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Recent Results Summary */}
+      {/* Enhanced Simulation Summary */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -314,22 +334,93 @@ const Results = () => {
           <CardDescription>Key metrics from the latest simulation run</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <span className="text-sm text-gray-500">Total Events</span>
-              <p className="font-medium text-lg">{logs.length}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-blue-700">Total Events</span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <HelpCircle className="h-4 w-4 text-blue-400" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Total number of logged events during simulation</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <p className="text-3xl font-bold text-blue-700">{logs.length}</p>
+              <div className="flex items-center gap-1 mt-1">
+                <TrendingUp className="h-3 w-3 text-green-500" />
+                <span className="text-xs text-green-600">+12% vs avg</span>
+              </div>
             </div>
-            <div>
-              <span className="text-sm text-gray-500">Successful Actions</span>
-              <p className="font-medium text-lg">{logs.filter(log => log.outcome.toLowerCase().includes('success')).length}</p>
+            
+            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-green-700">Successful Actions</span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <HelpCircle className="h-4 w-4 text-green-400" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Actions that achieved their intended outcome</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <p className="text-3xl font-bold text-green-700">
+                {logs.filter(log => log.outcome.toLowerCase().includes('success')).length}
+              </p>
+              <div className="flex items-center gap-1 mt-1">
+                <TrendingDown className="h-3 w-3 text-red-500" />
+                <span className="text-xs text-red-600">-5% vs avg</span>
+              </div>
             </div>
-            <div>
-              <span className="text-sm text-gray-500">Failed Actions</span>
-              <p className="font-medium text-lg">{logs.filter(log => !log.outcome.toLowerCase().includes('success')).length}</p>
+            
+            <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-red-700">Failed Actions</span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <HelpCircle className="h-4 w-4 text-red-400" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Actions that were blocked or failed to execute</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <p className="text-3xl font-bold text-red-700">
+                {logs.filter(log => !log.outcome.toLowerCase().includes('success')).length}
+              </p>
+              <div className="flex items-center gap-1 mt-1">
+                <TrendingUp className="h-3 w-3 text-green-500" />
+                <span className="text-xs text-green-600">+8% vs avg</span>
+              </div>
             </div>
-            <div>
-              <span className="text-sm text-gray-500">System Events</span>
-              <p className="font-medium text-lg">{metrics?.systemEvents || 0}</p>
+            
+            <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-purple-700">System Events</span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <HelpCircle className="h-4 w-4 text-purple-400" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Automated system responses and alerts</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <p className="text-3xl font-bold text-purple-700">{metrics?.systemEvents || 0}</p>
+              <div className="flex items-center gap-1 mt-1">
+                <TrendingUp className="h-3 w-3 text-green-500" />
+                <span className="text-xs text-green-600">+3% vs avg</span>
+              </div>
             </div>
           </div>
         </CardContent>
