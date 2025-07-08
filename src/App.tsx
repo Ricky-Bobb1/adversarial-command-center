@@ -8,6 +8,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import AppLayout from "./components/AppLayout";
 import Index from "./pages/Index";
+import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Setup from "./pages/Setup";
 import Agents from "./pages/Agents";
@@ -30,6 +31,7 @@ const App = () => (
             <div className="min-h-screen flex w-full">
               <Routes>
                 <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
                 <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
                 <Route path="/setup" element={<AppLayout><Setup /></AppLayout>} />
                 <Route path="/agents" element={<AppLayout><Agents /></AppLayout>} />

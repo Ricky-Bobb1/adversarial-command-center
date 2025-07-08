@@ -33,7 +33,7 @@ const Index = () => {
 
         {/* Call to action */}
         <div className="space-y-6">
-          <Link to="/dashboard">
+          <Link to="/login">
             <Button 
               size="lg" 
               className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold px-12 py-4 text-lg rounded-xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 group"
