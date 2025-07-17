@@ -162,6 +162,9 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
     }
   }, []);
 
+  // Track mock interval for proper cleanup
+  const mockIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   // Start mock simulation with generated logs
   const startMockSimulation = useCallback((mockId: string) => {
     console.log('[DEBUG] Starting mock simulation with ID:', mockId);
@@ -181,9 +184,12 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
     ];
     
     let logIndex = 0;
-    const mockInterval = setInterval(() => {
+    mockIntervalRef.current = setInterval(() => {
       if (!isComponentMounted.current || logIndex >= mockLogTemplates.length) {
-        clearInterval(mockInterval);
+        if (mockIntervalRef.current) {
+          clearInterval(mockIntervalRef.current);
+          mockIntervalRef.current = null;
+        }
         
         // End simulation after all logs
         setTimeout(() => {
@@ -304,12 +310,16 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
       
       // If using mock API, fall back to legacy behavior
       if (environment.enableMockApi) {
+        const mockId = `mock-${Date.now()}`;
         setIsRunning(true);
-        setSimulationId(`mock-${Date.now()}`);
+        setSimulationId(mockId);
         toast({
           title: 'Simulation Started (Mock Mode)',
           description: `Running scenario: ${scenario}`,
         });
+        
+        // Start mock simulation with generated logs
+        startMockSimulation(mockId);
         return;
       }
       
@@ -392,7 +402,16 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
     if (!simulationId) return;
     
     try {
-      if (!environment.enableMockApi) {
+      // Handle mock simulation stop
+      if (environment.enableMockApi || simulationId.startsWith('mock-')) {
+        console.log('[DEBUG] Stopping mock simulation');
+        
+        // Clear mock interval
+        if (mockIntervalRef.current) {
+          clearInterval(mockIntervalRef.current);
+          mockIntervalRef.current = null;
+        }
+      } else {
         await unifiedApiService.stopSimulation(simulationId);
       }
       
@@ -451,6 +470,11 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
       logsPollingRef.current = null;
     }
     
+    if (mockIntervalRef.current) {
+      clearInterval(mockIntervalRef.current);
+      mockIntervalRef.current = null;
+    }
+    
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -476,6 +500,10 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
       
       if (logsPollingRef.current) {
         clearInterval(logsPollingRef.current);
+      }
+      
+      if (mockIntervalRef.current) {
+        clearInterval(mockIntervalRef.current);
       }
       
       if (abortControllerRef.current) {
