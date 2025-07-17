@@ -69,26 +69,43 @@ const Settings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Globe className="h-5 w-5" />
-              API Configuration
+              FastAPI Backend Configuration
             </CardTitle>
-            <CardDescription>Configure external API endpoints and connections</CardDescription>
+            <CardDescription>Configure connection to the Adversa FastAPI backend</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="api-endpoint">API Endpoint</Label>
+              <Label htmlFor="api-endpoint">API Base URL</Label>
               <Input 
                 id="api-endpoint" 
                 value={apiEndpoint}
                 onChange={(e) => setApiEndpoint(e.target.value)}
-                placeholder="https://api.adversarial-ai.com/v1"
+                placeholder="https://your-api-gateway.amazonaws.com/Prod"
               />
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Base URL for simulation API calls
+                Base URL for the deployed FastAPI backend (AWS API Gateway)
               </p>
             </div>
-            <Button onClick={handleSaveApiConfig} className="w-full">
-              Save API Configuration
-            </Button>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Mock API Mode</Label>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Use simulated data for development</p>
+              </div>
+              <Switch 
+                checked={demoMode}
+                onCheckedChange={setDemoMode}
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <Button onClick={handleSaveApiConfig} className="flex-1">
+                Save Configuration
+              </Button>
+              <Button variant="outline" onClick={() => window.open(`${apiEndpoint}/docs`, '_blank')}>
+                View API Docs
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -104,13 +121,10 @@ const Settings = () => {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Demo Mode</Label>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Use simulated data for demonstrations</p>
+                <Label>Real-time Polling</Label>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Enable live simulation status updates</p>
               </div>
-              <Switch 
-                checked={demoMode}
-                onCheckedChange={setDemoMode}
-              />
+              <Switch defaultChecked />
             </div>
             <Separator />
             <div className="space-y-2">

@@ -28,12 +28,17 @@ class Environment {
     const isProduction = mode === 'production';
     const isTest = mode === 'test';
 
+    // Default to FastAPI backend URL
+    const defaultApiUrl = isDevelopment 
+      ? 'http://localhost:8000'  // Local FastAPI dev server
+      : 'https://api.adversa-ai.com'; // Production API Gateway
+
     return {
       isDevelopment,
       isProduction,
       isTest,
-      apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
-      enableMockApi: isDevelopment && !import.meta.env.VITE_API_BASE_URL,
+      apiBaseUrl: import.meta.env.VITE_API_BASE_URL || defaultApiUrl,
+      enableMockApi: import.meta.env.VITE_ENABLE_MOCK_API === 'true' || (isDevelopment && !import.meta.env.VITE_API_BASE_URL),
       logLevel: (import.meta.env.VITE_LOG_LEVEL as any) || (isDevelopment ? 'debug' : 'info'),
       cacheTimeout: parseInt(import.meta.env.VITE_CACHE_TIMEOUT || '300000'), // 5 minutes default
       retryAttempts: parseInt(import.meta.env.VITE_RETRY_ATTEMPTS || '3'),

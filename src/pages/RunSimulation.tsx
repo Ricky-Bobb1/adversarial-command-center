@@ -5,21 +5,29 @@ import LogConsole from "@/components/LogConsole";
 import SimulationControls from "@/components/SimulationControls";
 import { CenteredLoader, SimulationControlsSkeleton, LogConsoleSkeleton } from "@/components/LoadingStates";
 import { useSimulationExecution } from "@/hooks/useSimulationExecution";
+import { useRealTimeSimulation } from "@/hooks/useRealTimeSimulation";
 import { useScenarios } from "@/hooks/useScenarios";
 
 const RunSimulationContent = () => {
   const { state, dispatch } = useSimulationContext();
   const { scenarios, isLoading } = useScenarios();
+  // Use real-time simulation hook for better backend integration
   const {
     isRunning,
     logs,
     startSimulation,
     stopSimulation,
-    resetSimulation
-  } = useSimulationExecution();
+    resetSimulation,
+    error: simulationError,
+    status: simulationStatus
+  } = useRealTimeSimulation();
 
   const handleStartSimulation = () => {
-    startSimulation(state.selectedScenario);
+    startSimulation(state.selectedScenario, {
+      // Add any additional configuration here
+      agents: state.selectedScenario,
+      timestamp: new Date().toISOString()
+    });
   };
 
   const handleScenarioChange = (scenario: string) => {

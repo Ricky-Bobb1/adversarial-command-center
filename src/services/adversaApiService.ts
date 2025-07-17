@@ -13,12 +13,13 @@ class AdversaApiService {
   private baseUrl: string;
 
   constructor() {
-    // Use the configured API base URL or fallback to localhost for development
-    this.baseUrl = environment.apiBaseUrl || 'http://localhost:8000';
+    // Use the configured API base URL
+    this.baseUrl = environment.apiBaseUrl;
     
     logger.info('Adversa API Service initialized', 'AdversaApiService', {
       baseUrl: this.baseUrl,
-      environment: environment.isDevelopment ? 'development' : 'production'
+      environment: environment.isDevelopment ? 'development' : 'production',
+      mockMode: environment.enableMockApi
     });
   }
 

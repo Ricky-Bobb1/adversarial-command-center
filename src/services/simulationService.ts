@@ -10,7 +10,7 @@ import type {
 } from '../types/simulation';
 
 // Determine if we should use the Adversa API or mock API
-const useAdversaApi = !environment.enableMockApi && environment.apiBaseUrl;
+const useAdversaApi = !environment.enableMockApi;
 
 export const simulationService = {
   // Create a new simulation
@@ -19,6 +19,7 @@ export const simulationService = {
       return adversaApiService.createSimulation(request);
     }
     
+    // Mock API fallback
     return apiClient.post<CreateSimulationResponse>('/api/simulations', request, {
       requestId: `create-simulation-${Date.now()}`,
     });
