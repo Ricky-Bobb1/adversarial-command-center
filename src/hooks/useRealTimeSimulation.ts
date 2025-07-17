@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { simulationService } from '@/services/simulationService';
+import { unifiedApiService } from '@/services/unifiedApiService';
 import { environment } from '@/utils/environment';
 import { logger } from '@/utils/logger';
 import type { SimulationStatus, CreateSimulationRequest } from '@/types/simulation';
@@ -71,7 +71,7 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
     
     try {
       console.log(`[DEBUG] Polling status for simulation ${id}...`);
-      const statusResponse = await simulationService.getSimulationStatus(id);
+      const statusResponse = await unifiedApiService.getSimulationStatus(id);
       console.log('[DEBUG] Status response:', statusResponse);
       
       if (!isComponentMounted.current) return;
@@ -132,7 +132,7 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
     
     try {
       console.log(`[DEBUG] Polling logs for simulation ${id}...`);
-      const logsResponse = await simulationService.getSimulationLogs(id);
+      const logsResponse = await unifiedApiService.getSimulationLogs(id);
       console.log('[DEBUG] Logs response:', logsResponse);
       
       if (!isComponentMounted.current) return;
@@ -259,7 +259,7 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
       
       // Create simulation via real API
       console.log('[DEBUG] Creating simulation with request:', request);
-      const response = await simulationService.createSimulation(request);
+      const response = await unifiedApiService.createSimulation(request);
       console.log('[DEBUG] Create simulation response:', response);
       
       const newSimulationId = response.id || (response as any).simulation_id || (response as any).simulationId;
@@ -274,7 +274,7 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
       
       // Start the simulation
       console.log(`[DEBUG] Starting simulation ${newSimulationId}`);
-      const startResponse = await simulationService.startSimulation(newSimulationId);
+      const startResponse = await unifiedApiService.startSimulation(newSimulationId);
       console.log('[DEBUG] Start simulation response:', startResponse);
       
       setIsRunning(true);
@@ -320,7 +320,7 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
     
     try {
       if (!environment.enableMockApi) {
-        await simulationService.stopSimulation(simulationId);
+        await unifiedApiService.stopSimulation(simulationId);
       }
       
       setIsRunning(false);

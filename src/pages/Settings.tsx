@@ -10,7 +10,7 @@ import { useState, useEffect } from "react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useToast } from "@/hooks/use-toast";
 import { environment } from "@/utils/environment";
-import { adversaApiService } from "@/services/adversaApiService";
+import { unifiedApiService } from "@/services/unifiedApiService";
 
 const Settings = () => {
   const [apiEndpoint, setApiEndpoint] = useState("https://4ao182xl79.execute-api.us-east-1.amazonaws.com/alpha");
@@ -31,7 +31,7 @@ const Settings = () => {
     
     try {
       console.log('[API Test] Testing connection to:', environment.apiBaseUrl);
-      await adversaApiService.healthCheck();
+      await unifiedApiService.healthCheck();
       setApiStatus('success');
       toast({
         title: "API Connection Successful",

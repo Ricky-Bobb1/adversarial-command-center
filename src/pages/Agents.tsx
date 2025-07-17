@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Save, X, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { fetchMockData, postToMockApi, mockApiEndpoints } from "@/utils/mockApi";
-import { adversaApiService } from "@/services/adversaApiService";
+import { unifiedApiService } from "@/services/unifiedApiService";
 import { environment } from "@/utils/environment";
 
 interface AgentConfig {
@@ -60,7 +60,7 @@ const Agents = () => {
         // Load supported models from backend
         if (!environment.enableMockApi) {
           console.log('[DEBUG] Loading supported models from backend...');
-          const models = await adversaApiService.getSupportedModels();
+          const models = await unifiedApiService.getSupportedModels();
           setSupportedModels(models);
           console.log('[DEBUG] Supported models:', models);
         } else {

@@ -4,8 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, CheckCircle, XCircle, Clock } from "lucide-react";
-import { adversaApiService } from "@/services/adversaApiService";
-import { simulationService } from "@/services/simulationService";
+import { unifiedApiService } from "@/services/unifiedApiService";
 import { environment } from "@/utils/environment";
 
 const ApiStatus = () => {
@@ -16,9 +15,9 @@ const ApiStatus = () => {
     const checkApiStatus = async () => {
       try {
         if (!environment.enableMockApi && environment.apiBaseUrl) {
-          await adversaApiService.healthCheck();
+          await unifiedApiService.healthCheck();
           setStatus('connected');
-          setApiUrls(simulationService.getApiDocumentation());
+          setApiUrls(unifiedApiService.getApiDocumentation());
         } else {
           setStatus('disconnected');
         }

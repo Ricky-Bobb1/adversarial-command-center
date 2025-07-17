@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { fetchMockData } from "@/utils/mockApi";
-import { adversaApiService } from "@/services/adversaApiService";
+import { unifiedApiService } from "@/services/unifiedApiService";
 import { environment } from "@/utils/environment";
 import { useSimulationContext } from "@/contexts/SimulationContext";
 
@@ -24,9 +24,9 @@ export const useScenarios = () => {
         let scenarios: string[];
         
         if (useAdversaApi) {
-          // Use the Adversa API
-          console.log('[DEBUG] Using Adversa API for scenarios');
-          scenarios = await adversaApiService.getScenarios();
+          // Use the Unified API
+          console.log('[DEBUG] Using Unified API for scenarios');
+          scenarios = await unifiedApiService.getScenarios();
           console.log('[DEBUG] Received scenarios from API:', scenarios);
         } else {
           // Use mock data

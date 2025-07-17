@@ -1,20 +1,20 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { nodeService } from '../services/nodeService';
+import { unifiedApiService } from '../services/unifiedApiService';
 import { useToast } from './use-toast';
 import type { CreateNodeRequest, UpdateNodeRequest } from '../types/node';
 
 export const useNodes = () => {
   return useQuery({
     queryKey: ['nodes'],
-    queryFn: nodeService.getNodes,
+    queryFn: unifiedApiService.getNodes,
   });
 };
 
 export const useNode = (nodeId: string) => {
   return useQuery({
     queryKey: ['node', nodeId],
-    queryFn: () => nodeService.getNode(nodeId),
+    queryFn: () => unifiedApiService.getNode(nodeId),
     enabled: !!nodeId,
   });
 };
@@ -22,7 +22,7 @@ export const useNode = (nodeId: string) => {
 export const useNetworkTopology = () => {
   return useQuery({
     queryKey: ['network-topology'],
-    queryFn: nodeService.getNetworkTopology,
+    queryFn: unifiedApiService.getNetworkTopology,
   });
 };
 
@@ -32,7 +32,7 @@ export const useCreateNode = () => {
 
   return useMutation({
     mutationFn: (request: CreateNodeRequest) => 
-      nodeService.createNode(request),
+      unifiedApiService.createNode(request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['nodes'] });
       queryClient.invalidateQueries({ queryKey: ['network-topology'] });
@@ -57,7 +57,7 @@ export const useUpdateNode = () => {
 
   return useMutation({
     mutationFn: ({ nodeId, request }: { nodeId: string; request: UpdateNodeRequest }) =>
-      nodeService.updateNode(nodeId, request),
+      unifiedApiService.updateNode(nodeId, request),
     onSuccess: (_, { nodeId }) => {
       queryClient.invalidateQueries({ queryKey: ['nodes'] });
       queryClient.invalidateQueries({ queryKey: ['node', nodeId] });
