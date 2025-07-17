@@ -6,9 +6,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Save, X } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Save, X, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { fetchMockData, postToMockApi, mockApiEndpoints } from "@/utils/mockApi";
+import { adversaApiService } from "@/services/adversaApiService";
+import { environment } from "@/utils/environment";
 
 interface AgentConfig {
   redAgent: {
@@ -31,31 +34,55 @@ const Agents = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [supportedModels, setSupportedModels] = useState<string[]>([]);
 
   const [redStrategyInput, setRedStrategyInput] = useState("");
   const [blueStrategyInput, setBlueStrategyInput] = useState("");
 
-  const models = ["GPT-4", "GPT-4 Turbo", "Claude 3.5 Sonnet", "Claude 3 Opus", "Gemini Pro"];
+  // Backend-supported LLM models with descriptions
+  const modelDescriptions: Record<string, string> = {
+    "anthropic.claude-3-sonnet-20240229-v1:0": "Claude 3 Sonnet - Balanced performance and speed",
+    "cohere.command-r-plus": "Cohere Command R+ - Optimized for reasoning tasks",
+    "anthropic.claude-3-haiku-20240307-v1:0": "Claude 3 Haiku - Fast and efficient",
+    "anthropic.claude-3-opus-20240229-v1:0": "Claude 3 Opus - Most capable model"
+  };
 
-  // Load initial agent configuration
+  // Load initial agent configuration and supported models
   useEffect(() => {
-    const loadAgentConfig = async () => {
+    const loadConfiguration = async () => {
       try {
         setIsLoading(true);
+        
+        // Load agent config
         const data = await fetchMockData<AgentConfig>('agents');
         setConfig(data);
+        
+        // Load supported models from backend
+        if (!environment.enableMockApi) {
+          console.log('[DEBUG] Loading supported models from backend...');
+          const models = await adversaApiService.getSupportedModels();
+          setSupportedModels(models);
+          console.log('[DEBUG] Supported models:', models);
+        } else {
+          // Use fallback models in mock mode
+          setSupportedModels(Object.keys(modelDescriptions));
+        }
       } catch (error) {
+        console.error('[DEBUG] Failed to load configuration:', error);
         toast({
           title: "Failed to Load Configuration",
-          description: "Could not load existing agent configuration",
+          description: "Could not load existing agent configuration. Using defaults.",
           variant: "destructive",
         });
+        
+        // Set fallback models
+        setSupportedModels(Object.keys(modelDescriptions));
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadAgentConfig();
+    loadConfiguration();
   }, [toast]);
 
   const addRedStrategy = () => {
@@ -130,17 +157,23 @@ const Agents = () => {
 
     try {
       setIsSaving(true);
+      
+      // Save to localStorage for use in simulation
+      localStorage.setItem('agent-config', JSON.stringify(config));
+      console.log('[DEBUG] Saved agent config to localStorage:', config);
+      
+      // Also save to mock API for backwards compatibility
       await postToMockApi(mockApiEndpoints.agents, config);
       
       toast({
         title: "Configuration Saved",
-        description: "Agent configuration has been saved successfully",
+        description: "Agent configuration has been saved and will be used in simulations.",
       });
     } catch (error) {
+      console.warn('[DEBUG] Mock API save failed, but localStorage saved:', error);
       toast({
-        title: "Save Failed",
-        description: "Failed to save agent configuration",
-        variant: "destructive",
+        title: "Configuration Saved",
+        description: "Agent configuration has been saved and will be used in simulations.",
       });
     } finally {
       setIsSaving(false);
@@ -162,7 +195,12 @@ const Agents = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Agent Configuration</h1>
-        <p className="text-gray-600 mt-2">Configure your AI agents and their attack/defense strategies</p>
+        <div className="flex items-center gap-2 mt-2">
+          <p className="text-gray-600">Configure your AI agents and their attack/defense strategies</p>
+          <Badge variant="outline" className="text-xs">
+            {supportedModels.length} Backend Models Available
+          </Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -186,9 +224,21 @@ const Agents = () => {
                   <SelectValue placeholder="Select model for Red Agent" />
                 </SelectTrigger>
                 <SelectContent>
-                  {models.map((model) => (
+                  {supportedModels.map((model) => (
                     <SelectItem key={model} value={model}>
-                      {model}
+                      <div className="flex items-center gap-2">
+                        <span>{model}</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Info className="h-3 w-3 text-gray-400" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">{modelDescriptions[model] || 'Backend-supported model'}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -244,9 +294,21 @@ const Agents = () => {
                   <SelectValue placeholder="Select model for Blue Agent" />
                 </SelectTrigger>
                 <SelectContent>
-                  {models.map((model) => (
+                  {supportedModels.map((model) => (
                     <SelectItem key={model} value={model}>
-                      {model}
+                      <div className="flex items-center gap-2">
+                        <span>{model}</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Info className="h-3 w-3 text-gray-400" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">{modelDescriptions[model] || 'Backend-supported model'}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>

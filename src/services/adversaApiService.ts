@@ -45,11 +45,45 @@ class AdversaApiService {
 
   // Simulation management endpoints
   async createSimulation(request: CreateSimulationRequest): Promise<CreateSimulationResponse> {
-    // Load model first, then we'll get sim_id for running
-    const loadResponse = await apiClient.post(`${this.baseUrl}/aaa/sim/model/load`, {
+    // Get node configuration from localStorage
+    const savedNodes = localStorage.getItem('hospital-nodes');
+    const savedAgents = localStorage.getItem('agent-config');
+    
+    let nodes = [];
+    let agentConfig = null;
+    
+    if (savedNodes) {
+      try {
+        const nodeData = JSON.parse(savedNodes);
+        nodes = nodeData.nodes || [];
+        console.log('[DEBUG] Loaded nodes from storage:', nodes);
+      } catch (error) {
+        console.warn('[DEBUG] Failed to parse saved nodes:', error);
+      }
+    }
+    
+    if (savedAgents) {
+      try {
+        agentConfig = JSON.parse(savedAgents);
+        console.log('[DEBUG] Loaded agent config from storage:', agentConfig);
+      } catch (error) {
+        console.warn('[DEBUG] Failed to parse saved agents:', error);
+      }
+    }
+    
+    // Prepare model load payload according to backend schema
+    const loadPayload = {
       model_id: request.scenario, // Use scenario as model_id
-      step_by_step: false // Run to completion
-    }, {
+      step_by_step: false, // Run to completion
+      nodes: nodes, // Include nodes from Setup page
+      agents: agentConfig, // Include agent configuration
+      ...request.config // Include any additional config
+    };
+    
+    console.log('[DEBUG] Loading model with payload:', loadPayload);
+    
+    // Load model first, then we'll get sim_id for running
+    const loadResponse = await apiClient.post(`${this.baseUrl}/aaa/sim/model/load`, loadPayload, {
       requestId: `load-simulation-${Date.now()}`,
     }) as any;
     
@@ -168,27 +202,77 @@ class AdversaApiService {
   // Scenarios endpoints (get simulation models as scenarios)
   async getScenarios(): Promise<string[]> {
     try {
-      const response = await apiClient.get(`${this.baseUrl}/aaa/sim/models/summary`, {
+      console.log('[DEBUG] Fetching scenarios from /aaa/sim/models...');
+      const response = await apiClient.get(`${this.baseUrl}/aaa/sim/models`, {
         requestId: 'list-scenarios',
       }) as any;
       
-      console.log('[DEBUG] Scenarios/models response:', response);
+      console.log('[DEBUG] Models response:', response);
       
-      // Handle array of model summaries
+      // Handle array of model objects
       if (Array.isArray(response)) {
-        return response.map((model: any) => model.id || model.name || 'Unknown Model');
+        const scenarios = response.map((model: any) => model.id || model.name || 'Unknown Model');
+        console.log('[DEBUG] Extracted scenarios:', scenarios);
+        return scenarios;
       }
       
       // Handle single model object
       if (response && typeof response === 'object') {
-        return [response.id || response.name || 'Default Model'];
+        const scenario = response.id || response.name || 'Default Model';
+        console.log('[DEBUG] Single scenario:', scenario);
+        return [scenario];
       }
       
       // Fallback to default scenarios
+      console.log('[DEBUG] Using fallback scenarios');
       return ['default-scenario', 'enterprise-network', 'cloud-infrastructure'];
     } catch (error) {
-      console.log('[DEBUG] Failed to fetch scenarios, using defaults:', error);
+      console.error('[DEBUG] Failed to fetch scenarios:', error);
       return ['default-scenario', 'enterprise-network', 'cloud-infrastructure'];
+    }
+  }
+
+  // Get supported LLM providers and models
+  async getSupportedModels(): Promise<string[]> {
+    try {
+      console.log('[DEBUG] Fetching supported LLM models...');
+      const response = await apiClient.get(`${this.baseUrl}/aaa/providers`, {
+        requestId: 'list-providers',
+      }) as any;
+      
+      console.log('[DEBUG] Providers response:', response);
+      
+      // Extract model names from providers
+      const supportedModels = [
+        'anthropic.claude-3-sonnet-20240229-v1:0',
+        'cohere.command-r-plus',
+        'anthropic.claude-3-haiku-20240307-v1:0',
+        'anthropic.claude-3-opus-20240229-v1:0'
+      ];
+      
+      // If we got a response, try to extract models from it
+      if (Array.isArray(response)) {
+        const extractedModels = response.map((provider: any) => 
+          provider.model_name || provider.name || provider.id
+        ).filter(Boolean);
+        
+        if (extractedModels.length > 0) {
+          console.log('[DEBUG] Using extracted models:', extractedModels);
+          return extractedModels;
+        }
+      }
+      
+      console.log('[DEBUG] Using fallback supported models:', supportedModels);
+      return supportedModels;
+    } catch (error) {
+      console.error('[DEBUG] Failed to fetch supported models:', error);
+      // Return known supported models as fallback
+      return [
+        'anthropic.claude-3-sonnet-20240229-v1:0',
+        'cohere.command-r-plus',
+        'anthropic.claude-3-haiku-20240307-v1:0',
+        'anthropic.claude-3-opus-20240229-v1:0'
+      ];
     }
   }
 

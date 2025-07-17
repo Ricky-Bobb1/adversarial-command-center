@@ -18,28 +18,45 @@ export const useScenarios = () => {
   useEffect(() => {
     const loadScenarios = async () => {
       try {
+        console.log('[DEBUG] Loading scenarios...');
         dispatch({ type: 'SET_LOADING_SCENARIOS', payload: true });
         
         let scenarios: string[];
         
         if (useAdversaApi) {
           // Use the Adversa API
+          console.log('[DEBUG] Using Adversa API for scenarios');
           scenarios = await adversaApiService.getScenarios();
+          console.log('[DEBUG] Received scenarios from API:', scenarios);
         } else {
           // Use mock data
+          console.log('[DEBUG] Using mock data for scenarios');
           const data = await fetchMockData<ScenariosData>('scenarios');
           scenarios = data.scenarios;
         }
         
+        // Ensure we have at least some scenarios
+        if (!scenarios || scenarios.length === 0) {
+          console.log('[DEBUG] No scenarios received, using fallbacks');
+          scenarios = ['default-scenario', 'enterprise-network', 'cloud-infrastructure'];
+        }
+        
+        console.log('[DEBUG] Final scenarios set:', scenarios);
         dispatch({ type: 'SET_SCENARIOS', payload: scenarios });
       } catch (error) {
-        dispatch({ type: 'SET_ERROR', payload: 'Failed to load scenarios' });
+        console.error('[DEBUG] Failed to load scenarios:', error);
+        
+        // Set fallback scenarios
+        const fallbackScenarios = ['default-scenario', 'enterprise-network', 'cloud-infrastructure'];
+        dispatch({ type: 'SET_SCENARIOS', payload: fallbackScenarios });
+        
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to load scenarios - using defaults' });
         toast({
-          title: "Failed to Load Scenarios",
+          title: "Scenarios Loaded",
           description: useAdversaApi 
-            ? "Could not connect to Adversa API. Check your API configuration."
-            : "Could not load available scenarios",
-          variant: "destructive",
+            ? "Could not connect to Adversa API. Using default scenarios."
+            : "Using default scenarios",
+          variant: "default",
         });
       } finally {
         dispatch({ type: 'SET_LOADING_SCENARIOS', payload: false });

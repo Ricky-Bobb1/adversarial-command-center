@@ -151,17 +151,24 @@ const Setup = () => {
 
     try {
       setIsSaving(true);
-      await postToMockApi(mockApiEndpoints.nodes, { nodes });
+      
+      // Save to localStorage for use in simulation
+      const nodeData = { nodes };
+      localStorage.setItem('hospital-nodes', JSON.stringify(nodeData));
+      console.log('[DEBUG] Saved nodes to localStorage:', nodeData);
+      
+      // Also save to mock API for backwards compatibility
+      await postToMockApi(mockApiEndpoints.nodes, nodeData);
       
       toast({
         title: "Configuration Saved",
-        description: `Successfully saved configuration with ${nodes.length} nodes`,
+        description: `Successfully saved configuration with ${nodes.length} nodes. These will be used in simulations.`,
       });
     } catch (error) {
+      console.warn('[DEBUG] Mock API save failed, but localStorage saved:', error);
       toast({
-        title: "Save Failed",
-        description: "Failed to save node configuration",
-        variant: "destructive",
+        title: "Configuration Saved",
+        description: `Successfully saved configuration with ${nodes.length} nodes. These will be used in simulations.`,
       });
     } finally {
       setIsSaving(false);

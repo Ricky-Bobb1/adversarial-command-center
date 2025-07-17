@@ -176,11 +176,75 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
       setError(null);
       setLogs([]);
       
-      // Create simulation request
+      // Debug: Log frontend state before simulation starts
+      const savedNodes = localStorage.getItem('hospital-nodes');
+      const savedAgents = localStorage.getItem('agent-config');
+      
+      console.log('[DEBUG] ========== SIMULATION START DEBUG ==========');
+      console.log('[DEBUG] Selected scenario:', scenario);
+      console.log('[DEBUG] Additional config:', config);
+      console.log('[DEBUG] Saved nodes in localStorage:', savedNodes);
+      console.log('[DEBUG] Saved agents in localStorage:', savedAgents);
+      
+      let nodeData = null;
+      let agentData = null;
+      
+      if (savedNodes) {
+        try {
+          nodeData = JSON.parse(savedNodes);
+          console.log('[DEBUG] Parsed node data:', nodeData);
+        } catch (error) {
+          console.warn('[DEBUG] Failed to parse saved nodes:', error);
+        }
+      }
+      
+      if (savedAgents) {
+        try {
+          agentData = JSON.parse(savedAgents);
+          console.log('[DEBUG] Parsed agent data:', agentData);
+        } catch (error) {
+          console.warn('[DEBUG] Failed to parse saved agents:', error);
+        }
+      }
+      
+      // Validate state before proceeding
+      if (!nodeData || !nodeData.nodes || nodeData.nodes.length === 0) {
+        console.warn('[DEBUG] No nodes configured! Please set up nodes first.');
+        toast({
+          title: 'Setup Required',
+          description: 'Please configure nodes in the Setup page before running simulations.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      if (!agentData || !agentData.redAgent.model || !agentData.blueAgent.model) {
+        console.warn('[DEBUG] Agents not fully configured!');
+        toast({
+          title: 'Agent Configuration Required', 
+          description: 'Please configure both Red and Blue agents before running simulations.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      console.log('[DEBUG] ========== STATE VALIDATION PASSED ==========');
+      
+      // Create simulation request with full debug logging
       const request: CreateSimulationRequest = {
         scenario,
-        config: config || {},
+        config: {
+          ...config,
+          nodes: nodeData?.nodes || [],
+          agents: agentData,
+          timestamp: new Date().toISOString(),
+          debug: true
+        }
       };
+      
+      console.log('[DEBUG] ========== SIMULATION REQUEST PAYLOAD ==========');
+      console.log('[DEBUG] Full request object:', JSON.stringify(request, null, 2));
+      console.log('[DEBUG] ===============================================');
       
       // If using mock API, fall back to legacy behavior
       if (environment.enableMockApi) {
