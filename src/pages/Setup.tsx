@@ -8,26 +8,18 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { fetchMockData, postToMockApi, mockApiEndpoints } from "@/utils/mockApi";
-
-interface Node {
-  id: string;
-  name: string;
-  type: string;
-  services: string[];
-  vulnerabilities: string;
-  capabilities: string;
-}
-
-interface NodesData {
-  nodes: Node[];
-}
+import { useAppState, type HospitalNode } from "@/contexts/AppStateContext";
 
 const Setup = () => {
   const { toast } = useToast();
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [editingNode, setEditingNode] = useState<Node | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { 
+    state: { hospitalNodes: nodes, isLoading }, 
+    setHospitalNodes, 
+    addHospitalNode, 
+    updateHospitalNode, 
+    removeHospitalNode 
+  } = useAppState();
+  const [editingNode, setEditingNode] = useState<HospitalNode | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -39,26 +31,8 @@ const Setup = () => {
 
   const nodeTypes = ["Human", "Software", "Hardware"];
 
-  // Load initial data from mock API
-  useEffect(() => {
-    const loadNodes = async () => {
-      try {
-        setIsLoading(true);
-        const data = await fetchMockData<NodesData>('nodes');
-        setNodes(data.nodes);
-      } catch (error) {
-        toast({
-          title: "Failed to Load Data",
-          description: "Could not load existing node configurations",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadNodes();
-  }, [toast]);
+  // Note: State is now managed by AppStateContext and automatically 
+  // loads from localStorage on app initialization
 
   const resetForm = () => {
     setFormData({
@@ -94,7 +68,7 @@ const Setup = () => {
   const addNode = () => {
     if (!validateForm()) return;
 
-    const newNode: Node = {
+    const newNode: HospitalNode = {
       id: Date.now().toString(),
       name: formData.name,
       type: formData.type,
@@ -104,13 +78,19 @@ const Setup = () => {
     };
 
     if (editingNode) {
-      setNodes(nodes.map(node => node.id === editingNode.id ? { ...newNode, id: editingNode.id } : node));
+      updateHospitalNode(editingNode.id, {
+        name: formData.name,
+        type: formData.type,
+        services: formData.services ? formData.services.split(',').map(s => s.trim()) : [],
+        vulnerabilities: formData.vulnerabilities,
+        capabilities: formData.capabilities
+      });
       toast({
         title: "Node Updated",
         description: `Node "${formData.name}" has been updated successfully`,
       });
     } else {
-      setNodes([...nodes, newNode]);
+      addHospitalNode(newNode);
       toast({
         title: "Node Added",
         description: `Node "${formData.name}" has been added successfully`,
@@ -120,7 +100,7 @@ const Setup = () => {
     resetForm();
   };
 
-  const editNode = (node: Node) => {
+  const editNode = (node: HospitalNode) => {
     setFormData({
       name: node.name,
       type: node.type,
@@ -132,7 +112,7 @@ const Setup = () => {
   };
 
   const removeNode = (id: string) => {
-    setNodes(nodes.filter(node => node.id !== id));
+    removeHospitalNode(id);
     toast({
       title: "Node Removed",
       description: "Node has been removed from configuration",
@@ -152,23 +132,16 @@ const Setup = () => {
     try {
       setIsSaving(true);
       
-      // Save to localStorage for use in simulation
-      const nodeData = { nodes };
-      localStorage.setItem('hospital-nodes', JSON.stringify(nodeData));
-      console.log('[DEBUG] Saved nodes to localStorage:', nodeData);
-      
-      // Also save to mock API for backwards compatibility
-      await postToMockApi(mockApiEndpoints.nodes, nodeData);
-      
+      // State is automatically persisted to localStorage by AppStateContext
       toast({
         title: "Configuration Saved",
         description: `Successfully saved configuration with ${nodes.length} nodes. These will be used in simulations.`,
       });
     } catch (error) {
-      console.warn('[DEBUG] Mock API save failed, but localStorage saved:', error);
       toast({
-        title: "Configuration Saved",
-        description: `Successfully saved configuration with ${nodes.length} nodes. These will be used in simulations.`,
+        title: "Save Error", 
+        description: "Failed to save configuration. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsSaving(false);

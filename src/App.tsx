@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { AppStateProvider } from "@/contexts/AppStateContext";
+import AppErrorBoundary from "./components/AppErrorBoundary";
 import AppLayout from "./components/AppLayout";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -21,11 +23,13 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="system" storageKey="ui-theme">
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
+  <AppErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <AppStateProvider>
+        <ThemeProvider defaultTheme="system" storageKey="ui-theme">
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
         <BrowserRouter>
           <SidebarProvider>
             <div className="min-h-screen flex w-full">
@@ -43,10 +47,12 @@ const App = () => (
               </Routes>
             </div>
           </SidebarProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
+    </AppStateProvider>
+    </QueryClientProvider>
+  </AppErrorBoundary>
 );
 
 export default App;

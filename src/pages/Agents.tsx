@@ -11,6 +11,7 @@ import { Save, X, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { fetchMockData, postToMockApi, mockApiEndpoints } from "@/utils/mockApi";
 import { unifiedApiService } from "@/services/unifiedApiService";
+import { useAppState } from "@/contexts/AppStateContext";
 import { environment } from "@/utils/environment";
 
 interface AgentConfig {
