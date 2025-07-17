@@ -13,6 +13,7 @@ import { fetchMockData, postToMockApi, mockApiEndpoints } from "@/utils/mockApi"
 import { unifiedApiService } from "@/services/unifiedApiService";
 import { useAppState } from "@/contexts/AppStateContext";
 import { environment } from "@/utils/environment";
+import { SimulationReadinessCheck } from "@/components/SimulationReadinessCheck";
 
 interface AgentConfig {
   redAgent: {
@@ -47,12 +48,14 @@ const Agents = () => {
   const [redStrategyInput, setRedStrategyInput] = useState("");
   const [blueStrategyInput, setBlueStrategyInput] = useState("");
 
-  // Backend-supported LLM models with descriptions
+  // Backend-supported LLM models with descriptions (fallback if backend unavailable)
   const modelDescriptions: Record<string, string> = {
-    "anthropic.claude-3-sonnet-20240229-v1:0": "Claude 3 Sonnet - Balanced performance and speed",
-    "cohere.command-r-plus": "Cohere Command R+ - Optimized for reasoning tasks",
-    "anthropic.claude-3-haiku-20240307-v1:0": "Claude 3 Haiku - Fast and efficient",
-    "anthropic.claude-3-opus-20240229-v1:0": "Claude 3 Opus - Most capable model"
+    "anthropic.claude-3-sonnet-20240229-v1:0": "Claude 3 Sonnet - Balanced performance for adversarial tasks",
+    "anthropic.claude-3-haiku-20240307-v1:0": "Claude 3 Haiku - Fast and efficient for real-time responses", 
+    "anthropic.claude-3-opus-20240229-v1:0": "Claude 3 Opus - Most capable for complex attack strategies",
+    "cohere.command-r-plus": "Cohere Command R+ - Optimized for reasoning and planning",
+    "gpt-4-turbo": "GPT-4 Turbo - Advanced reasoning for sophisticated simulations",
+    "gpt-3.5-turbo": "GPT-3.5 Turbo - Efficient and cost-effective option"
   };
 
   // Load initial agent configuration and supported models
@@ -199,16 +202,24 @@ const Agents = () => {
     try {
       setIsSaving(true);
       
-      // Update AppStateContext with new format
+      // Update AppStateContext with new format for backend compatibility
       const contextConfig = {
-        redAgent: { model: config.redAgent.model, strategy: config.redAgent.strategies.join(', ') },
-        blueAgent: { model: config.blueAgent.model, strategy: config.blueAgent.strategies.join(', ') }
+        redAgent: { 
+          model: config.redAgent.model, 
+          strategy: config.redAgent.strategies.join(', '),
+          prompts: null // Can be extended later for custom prompts
+        },
+        blueAgent: { 
+          model: config.blueAgent.model, 
+          strategy: config.blueAgent.strategies.join(', '),
+          prompts: null // Can be extended later for custom prompts
+        }
       };
       setAgentConfig(contextConfig);
       
-      // Save to localStorage for backwards compatibility
+      // Save to localStorage for immediate simulation use
       localStorage.setItem('agent-config', JSON.stringify(config));
-      console.log('[DEBUG] Saved agent config to localStorage and context:', config);
+      console.log('[DEBUG] Saved agent config to localStorage and context:', { config, contextConfig });
       
       // Also save to mock API for backwards compatibility
       await postToMockApi(mockApiEndpoints.agents, config);
@@ -241,26 +252,31 @@ const Agents = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Agent Configuration</h1>
-        <div className="flex items-center gap-2 mt-2">
-          <p className="text-gray-600">Configure your AI agents and their attack/defense strategies</p>
-          <Badge variant="outline" className="text-xs">
-            {supportedModels.length} Backend Models Available
-          </Badge>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">AI Agent Configuration</h1>
+          <div className="flex items-center gap-2 mt-2">
+            <p className="text-gray-600">Configure Red Team (attacker) and Blue Team (defender) AI agents for cybersecurity simulation</p>
+            <Badge variant="outline" className="text-xs">
+              {supportedModels.length} Backend Models Available
+            </Badge>
+          </div>
+          <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+            <p className="text-sm text-green-800">
+              <strong>Backend Integration:</strong> Agents are configured for the SimModel API. Models will be used in the actual adversarial simulation engine.
+            </p>
+          </div>
         </div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Red Agent Panel */}
-        <Card className="border-red-200">
+        <Card className="border-red-200 bg-red-50/30">
           <CardHeader className="bg-red-50">
-            <CardTitle className="text-red-800">Red Agent (Attacker)</CardTitle>
-            <CardDescription>Configure the adversarial AI agent</CardDescription>
+            <CardTitle className="text-red-800">🔴 Red Agent (Adversary)</CardTitle>
+            <CardDescription>Configure the AI agent that will simulate cyber attacks on your hospital infrastructure</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pt-6">
             <div className="space-y-2">
-              <Label htmlFor="redModel">LLM Model</Label>
+              <Label htmlFor="redModel">LLM Model for Attack Planning</Label>
               <Select 
                 value={config.redAgent.model} 
                 onValueChange={(value) => setConfig({
@@ -294,11 +310,11 @@ const Agents = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="redStrategies">Attack Strategies</Label>
+              <Label htmlFor="redStrategies">Attack Strategies & Tactics</Label>
               <div className="flex gap-2">
                 <Input
                   id="redStrategies"
-                  placeholder="e.g., phishing, sql injection, malware"
+                  placeholder="e.g., phishing, SQL injection, privilege escalation, lateral movement"
                   value={redStrategyInput}
                   onChange={(e) => setRedStrategyInput(e.target.value)}
                   onKeyDown={handleRedStrategyKeyDown}
@@ -323,14 +339,14 @@ const Agents = () => {
         </Card>
 
         {/* Blue Agent Panel */}
-        <Card className="border-blue-200">
+        <Card className="border-blue-200 bg-blue-50/30">
           <CardHeader className="bg-blue-50">
-            <CardTitle className="text-blue-800">Blue Agent (Defender)</CardTitle>
-            <CardDescription>Configure the defensive AI agent</CardDescription>
+            <CardTitle className="text-blue-800">🔵 Blue Agent (Defender)</CardTitle>
+            <CardDescription>Configure the AI agent that will defend your hospital infrastructure and respond to threats</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pt-6">
             <div className="space-y-2">
-              <Label htmlFor="blueModel">LLM Model</Label>
+              <Label htmlFor="blueModel">LLM Model for Defense Planning</Label>
               <Select 
                 value={config.blueAgent.model} 
                 onValueChange={(value) => setConfig({
@@ -364,11 +380,11 @@ const Agents = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="blueStrategies">Defense Strategies</Label>
+              <Label htmlFor="blueStrategies">Defense Strategies & Countermeasures</Label>
               <div className="flex gap-2">
                 <Input
                   id="blueStrategies"
-                  placeholder="e.g., anomaly detection, isolation, monitoring"
+                  placeholder="e.g., anomaly detection, network segmentation, incident response, threat hunting"
                   value={blueStrategyInput}
                   onChange={(e) => setBlueStrategyInput(e.target.value)}
                   onKeyDown={handleBlueStrategyKeyDown}
@@ -393,17 +409,17 @@ const Agents = () => {
         </Card>
       </div>
 
-      {/* Human-in-the-Loop Toggle */}
+      {/* Advanced Configuration */}
       <Card>
         <CardHeader>
-          <CardTitle>Advanced Configuration</CardTitle>
-          <CardDescription>Additional settings for the simulation</CardDescription>
+          <CardTitle>Simulation Configuration</CardTitle>
+          <CardDescription>Advanced settings for the adversarial simulation engine</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <Label htmlFor="humanInLoop">Enable Human-in-the-Loop</Label>
-              <p className="text-sm text-gray-500">Allow human intervention during simulation</p>
+              <p className="text-sm text-gray-500">Allow human analysts to intervene and make decisions during simulation</p>
             </div>
             <Switch
               id="humanInLoop"
@@ -420,13 +436,19 @@ const Agents = () => {
       {/* Configuration Preview */}
       <Card>
         <CardHeader>
-          <CardTitle>Configuration Preview</CardTitle>
-          <CardDescription>JSON representation of your agent configuration</CardDescription>
+          <CardTitle>Agent Configuration Preview</CardTitle>
+          <CardDescription>JSON representation that will be sent to the SimModel API for simulation execution</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="bg-gray-50 p-4 rounded-lg">
             <pre className="text-sm overflow-auto max-h-96">
-              {JSON.stringify(config, null, 2)}
+              {JSON.stringify({
+                simulation_config: config,
+                backend_format: {
+                  redAgent: { model: config.redAgent.model, strategy: config.redAgent.strategies.join(', ') },
+                  blueAgent: { model: config.blueAgent.model, strategy: config.blueAgent.strategies.join(', ') }
+                }
+              }, null, 2)}
             </pre>
           </div>
         </CardContent>
@@ -436,9 +458,12 @@ const Agents = () => {
       <div className="flex justify-end">
         <Button onClick={saveConfiguration} size="lg" disabled={isSaving}>
           <Save className="h-4 w-4 mr-2" />
-          {isSaving ? "Saving..." : "Save Configuration"}
+          {isSaving ? "Saving..." : "Save Agent Configuration"}
         </Button>
       </div>
+
+      {/* Simulation Readiness Check */}
+      <SimulationReadinessCheck />
     </div>
   );
 };

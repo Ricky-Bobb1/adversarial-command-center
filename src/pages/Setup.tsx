@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppState, type HospitalNode } from "@/contexts/AppStateContext";
+import { SimulationReadinessCheck } from "@/components/SimulationReadinessCheck";
 
 const Setup = () => {
   const { toast } = useToast();
@@ -29,7 +30,11 @@ const Setup = () => {
     capabilities: ""
   });
 
-  const nodeTypes = ["Human", "Software", "Hardware"];
+  const nodeTypes = [
+    { value: "Human", label: "Human (Person)", description: "Doctors, nurses, staff members" },
+    { value: "Software", label: "Software (Asset)", description: "EHR systems, databases, applications" }, 
+    { value: "Hardware", label: "Hardware (Asset)", description: "Medical devices, servers, workstations" }
+  ];
 
   // Note: State is now managed by AppStateContext and automatically 
   // loads from localStorage on app initialization
@@ -68,32 +73,42 @@ const Setup = () => {
   const addNode = () => {
     if (!validateForm()) return;
 
+    // Enhanced validation for backend compatibility
+    if (formData.name.length < 3) {
+      toast({
+        title: "Validation Error",
+        description: "Node name must be at least 3 characters long",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const newNode: HospitalNode = {
-      id: Date.now().toString(),
-      name: formData.name,
+      id: editingNode?.id || Date.now().toString(),
+      name: formData.name.trim(),
       type: formData.type,
-      services: formData.services ? formData.services.split(',').map(s => s.trim()) : [],
-      vulnerabilities: formData.vulnerabilities,
-      capabilities: formData.capabilities
+      services: formData.services ? formData.services.split(',').map(s => s.trim()).filter(s => s.length > 0) : [],
+      vulnerabilities: formData.vulnerabilities.trim(),
+      capabilities: formData.capabilities.trim()
     };
 
     if (editingNode) {
       updateHospitalNode(editingNode.id, {
-        name: formData.name,
-        type: formData.type,
-        services: formData.services ? formData.services.split(',').map(s => s.trim()) : [],
-        vulnerabilities: formData.vulnerabilities,
-        capabilities: formData.capabilities
+        name: newNode.name,
+        type: newNode.type,
+        services: newNode.services,
+        vulnerabilities: newNode.vulnerabilities,
+        capabilities: newNode.capabilities
       });
       toast({
         title: "Node Updated",
-        description: `Node "${formData.name}" has been updated successfully`,
+        description: `Node "${newNode.name}" has been updated and will be available for simulations`,
       });
     } else {
       addHospitalNode(newNode);
       toast({
-        title: "Node Added",
-        description: `Node "${formData.name}" has been added successfully`,
+        title: "Node Added", 
+        description: `Node "${newNode.name}" has been added to your hospital network`,
       });
     }
 
@@ -162,8 +177,16 @@ const Setup = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Setup - Hospital Infrastructure</h1>
-        <p className="text-gray-600 mt-2">Model your hospital's infrastructure by defining nodes and their configurations</p>
+        <h1 className="text-3xl font-bold text-gray-900">Hospital Network Setup</h1>
+        <p className="text-gray-600 mt-2">
+          Configure your hospital infrastructure nodes for cybersecurity simulation. 
+          These will be converted to SimModel format for backend processing.
+        </p>
+        <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <p className="text-sm text-blue-800">
+            <strong>Node Types:</strong> Human nodes become "Person" entities, while Software/Hardware become "Asset" entities in the simulation model.
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -195,9 +218,12 @@ const Setup = () => {
                   <SelectValue placeholder="Select node type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {nodeTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
+                  {nodeTypes.map((nodeType) => (
+                    <SelectItem key={nodeType.value} value={nodeType.value}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{nodeType.label}</span>
+                        <span className="text-xs text-gray-500">{nodeType.description}</span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -264,6 +290,9 @@ const Setup = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Simulation Readiness Check */}
+      <SimulationReadinessCheck />
 
       {/* Nodes Table */}
       {nodes.length > 0 && (
