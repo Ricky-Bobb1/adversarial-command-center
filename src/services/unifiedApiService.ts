@@ -188,57 +188,82 @@ class UnifiedApiService {
   async createSimulation(request: CreateSimulationRequest): Promise<CreateSimulationResponse> {
     // For real API, we need to load the model first, then run simulation
     if (this.isRealMode) {
-      // Load nodes from localStorage
-      const savedNodes = localStorage.getItem('hospital-nodes');
-      const savedAgents = localStorage.getItem('agent-config');
-      
-      if (!savedNodes) {
-        throw new ApiError('No nodes configured! Please set up nodes first.');
+      try {
+        // Load nodes from localStorage
+        const savedNodes = localStorage.getItem('hospital-nodes');
+        const savedAgents = localStorage.getItem('agent-config');
+        
+        if (!savedNodes) {
+          throw new ApiError('No nodes configured! Please set up nodes first.');
+        }
+
+        if (!savedAgents) {
+          throw new ApiError('No agents configured! Please set up agents first.');
+        }
+
+        const nodes = JSON.parse(savedNodes);
+        const agents = JSON.parse(savedAgents);
+
+        logger.debug('[SIMULATION] Loading model with nodes and agents', 'UnifiedApiService', {
+          nodeCount: nodes.nodes?.length || 0,
+          hasRedAgent: !!agents.redAgent,
+          hasBlueAgent: !!agents.blueAgent
+        });
+
+        // First, load the model
+        const loadPayload = {
+          model_id: request.scenario,  // API expects model_id, not model_name
+          model_name: request.scenario,
+          nodes: nodes.nodes || [],
+          red_agent: agents.redAgent || {},
+          blue_agent: agents.blueAgent || {}
+        };
+
+        await this.makeRequest(
+          '/api/simulations',  // Mock would create simulation directly
+          '/aaa/sim/model/load',  // Real API loads model first
+          'POST',
+          loadPayload,
+          `load-model-${Date.now()}`
+        );
+
+        // Then run the simulation
+        const runResponse = await this.makeRequest<CreateSimulationResponse>(
+          `/api/simulations/run`,
+          `/aaa/sim/run`,
+          'POST',
+          { 
+            model_id: request.scenario,
+            model_name: request.scenario 
+          },
+          `run-simulation-${Date.now()}`
+        );
+
+        return runResponse;
+        
+      } catch (error: any) {
+        // If model not found (404), fall back to mock simulation
+        if (error.status === 404 && error.details?.detail?.includes('SimModel not found')) {
+          logger.warn('[SIMULATION] Model not found on backend, falling back to mock simulation', 'UnifiedApiService', {
+            scenario: request.scenario,
+            error: error.message
+          });
+          
+          // Generate mock response
+          return {
+            id: `mock-sim-${Date.now()}`,
+            status: {
+              status: "running" as const,
+              progress: 0,
+              message: "Starting mock simulation..."
+            },
+            createdAt: new Date().toISOString()
+          };
+        }
+        
+        // Re-throw other errors
+        throw error;
       }
-
-      if (!savedAgents) {
-        throw new ApiError('No agents configured! Please set up agents first.');
-      }
-
-      const nodes = JSON.parse(savedNodes);
-      const agents = JSON.parse(savedAgents);
-
-      logger.debug('[SIMULATION] Loading model with nodes and agents', 'UnifiedApiService', {
-        nodeCount: nodes.nodes?.length || 0,
-        hasRedAgent: !!agents.redAgent,
-        hasBlueAgent: !!agents.blueAgent
-      });
-
-      // First, load the model
-      const loadPayload = {
-        model_id: request.scenario,  // API expects model_id, not model_name
-        model_name: request.scenario,
-        nodes: nodes.nodes || [],
-        red_agent: agents.redAgent || {},
-        blue_agent: agents.blueAgent || {}
-      };
-
-      await this.makeRequest(
-        '/api/simulations',  // Mock would create simulation directly
-        '/aaa/sim/model/load',  // Real API loads model first
-        'POST',
-        loadPayload,
-        `load-model-${Date.now()}`
-      );
-
-      // Then run the simulation
-      const runResponse = await this.makeRequest<CreateSimulationResponse>(
-        `/api/simulations/run`,
-        `/aaa/sim/run`,
-        'POST',
-        { 
-          model_id: request.scenario,
-          model_name: request.scenario 
-        },
-        `run-simulation-${Date.now()}`
-      );
-
-      return runResponse;
     }
 
     // Mock API - simple creation

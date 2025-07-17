@@ -162,6 +162,55 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
     }
   }, []);
 
+  // Start mock simulation with generated logs
+  const startMockSimulation = useCallback((mockId: string) => {
+    console.log('[DEBUG] Starting mock simulation with ID:', mockId);
+    
+    // Generate some mock logs periodically
+    const mockLogTemplates = [
+      { agent: "Red" as const, action: "Port scan initiated", outcome: "Discovered open ports 22, 80, 443" },
+      { agent: "Blue" as const, action: "Intrusion detection triggered", outcome: "Suspicious activity detected from 192.168.1.100" },
+      { agent: "Red" as const, action: "SSH brute force attempt", outcome: "Failed - strong credentials detected" },
+      { agent: "Blue" as const, action: "Firewall rule updated", outcome: "Blocked suspicious IP range" },
+      { agent: "Red" as const, action: "Phishing email sent", outcome: "1 out of 50 users clicked malicious link" },
+      { agent: "Blue" as const, action: "Email security scan", outcome: "Malicious email quarantined" },
+      { agent: "System" as const, action: "Security alert generated", outcome: "Alert sent to security team" },
+      { agent: "Red" as const, action: "Privilege escalation attempt", outcome: "Success - gained admin access to workstation" },
+      { agent: "Blue" as const, action: "Endpoint detection response", outcome: "Malicious process terminated" },
+      { agent: "System" as const, action: "Compliance check", outcome: "HIPAA compliance verified" }
+    ];
+    
+    let logIndex = 0;
+    const mockInterval = setInterval(() => {
+      if (!isComponentMounted.current || logIndex >= mockLogTemplates.length) {
+        clearInterval(mockInterval);
+        
+        // End simulation after all logs
+        setTimeout(() => {
+          if (isComponentMounted.current) {
+            setIsRunning(false);
+            toast({
+              title: 'Mock Simulation Completed',
+              description: 'Local simulation finished successfully. Check Results page for analysis.',
+            });
+          }
+        }, 2000);
+        return;
+      }
+      
+      const template = mockLogTemplates[logIndex];
+      const newLog: LogEntry = {
+        id: `mock-log-${Date.now()}-${logIndex}`,
+        timestamp: new Date().toISOString(),
+        ...template
+      };
+      
+      setLogs(prev => [...prev, newLog]);
+      logIndex++;
+    }, 3000); // New log every 3 seconds
+    
+  }, [toast]);
+
   // Start simulation
   const startSimulation = useCallback(async (scenario: string, config?: any) => {
     if (!scenario) {
@@ -269,19 +318,36 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
       const response = await unifiedApiService.createSimulation(request);
       console.log('[DEBUG] Create simulation response:', response);
       
-      const newSimulationId = response.id || (response as any).simulation_id || (response as any).simulationId;
+      // Check if this is a mock fallback response
+      const newSimulationId = response.id;
+      if (newSimulationId.startsWith('mock-sim-')) {
+        console.log('[DEBUG] Using mock simulation fallback');
+        setSimulationId(newSimulationId);
+        setIsRunning(true);
+        toast({
+          title: 'Simulation Started (Mock Mode)',
+          description: `Backend model not available. Running local simulation: ${scenario}`,
+          variant: 'default',
+        });
+        
+        // Start mock simulation with generated logs
+        startMockSimulation(newSimulationId);
+        return;
+      }
       
-      if (!newSimulationId) {
+      const actualSimulationId = newSimulationId || (response as any).simulation_id || (response as any).simulationId;
+      
+      if (!actualSimulationId) {
         console.error('[DEBUG] No simulation ID found in response:', response);
         throw new Error('No simulation ID returned from API');
       }
       
-      console.log(`[DEBUG] Created simulation with ID: ${newSimulationId}`);
-      setSimulationId(newSimulationId);
+      console.log(`[DEBUG] Created simulation with ID: ${actualSimulationId}`);
+      setSimulationId(actualSimulationId);
       
       // Start the simulation
-      console.log(`[DEBUG] Starting simulation ${newSimulationId}`);
-      const startResponse = await unifiedApiService.startSimulation(newSimulationId);
+      console.log(`[DEBUG] Starting simulation ${actualSimulationId}`);
+      const startResponse = await unifiedApiService.startSimulation(actualSimulationId);
       console.log('[DEBUG] Start simulation response:', startResponse);
       
       setIsRunning(true);
@@ -291,16 +357,16 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
       pollingStartTime.current = Date.now();
       
       // Do initial status check
-      await pollStatus(newSimulationId);
-      await pollLogs(newSimulationId);
+      await pollStatus(actualSimulationId);
+      await pollLogs(actualSimulationId);
       
       // Start polling for status and logs
       statusPollingRef.current = setInterval(() => {
-        pollStatus(newSimulationId);
+        pollStatus(actualSimulationId);
       }, 3000); // Poll every 3 seconds to avoid overwhelming the API
       
       logsPollingRef.current = setInterval(() => {
-        pollLogs(newSimulationId);
+        pollLogs(actualSimulationId);
       }, 2000); // Poll logs every 2 seconds
       
       toast({
