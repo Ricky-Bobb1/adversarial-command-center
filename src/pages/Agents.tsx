@@ -62,8 +62,15 @@ const Agents = () => {
         if (!environment.enableMockApi) {
           console.log('[DEBUG] Loading supported models from backend...');
           const models = await unifiedApiService.getSupportedModels();
-          setSupportedModels(models);
           console.log('[DEBUG] Supported models:', models);
+          
+          // If backend returns empty models, use fallback
+          if (!models || models.length === 0) {
+            console.log('[DEBUG] Backend returned no models, using fallback models');
+            setSupportedModels(Object.keys(modelDescriptions));
+          } else {
+            setSupportedModels(models);
+          }
         } else {
           // Use fallback models in mock mode
           setSupportedModels(Object.keys(modelDescriptions));
