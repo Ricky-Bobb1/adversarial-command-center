@@ -3,7 +3,9 @@ import { SimulationProvider, useSimulationContext } from "@/contexts/SimulationC
 import ErrorBoundary from "@/components/ErrorBoundary";
 import LogConsole from "@/components/LogConsole";
 import SimulationControls from "@/components/SimulationControls";
+import { SimulationDebugPanel } from "@/components/SimulationDebugPanel";
 import { CenteredLoader, SimulationControlsSkeleton, LogConsoleSkeleton } from "@/components/LoadingStates";
+import { environment } from "@/utils/environment";
 import { useSimulationExecution } from "@/hooks/useSimulationExecution";
 import { useRealTimeSimulation } from "@/hooks/useRealTimeSimulation";
 import { useScenarios } from "@/hooks/useScenarios";
@@ -15,6 +17,7 @@ const RunSimulationContent = () => {
   const {
     isRunning,
     logs,
+    simulationId,
     startSimulation,
     stopSimulation,
     resetSimulation,
@@ -69,6 +72,17 @@ const RunSimulationContent = () => {
       <ErrorBoundary>
         <LogConsole logs={logs} isRunning={isRunning} />
       </ErrorBoundary>
+
+      {/* Debug Panel - Only show in development */}
+      {environment.isDevelopment && (
+        <SimulationDebugPanel
+          simulationId={simulationId}
+          status={simulationStatus}
+          error={simulationError}
+          isRunning={isRunning}
+          logs={logs}
+        />
+      )}
     </div>
   );
 };

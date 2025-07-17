@@ -41,34 +41,57 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
     if (!isComponentMounted.current) return;
     
     try {
+      console.log(`[DEBUG] Polling status for simulation ${id}...`);
       const statusResponse = await simulationService.getSimulationStatus(id);
+      console.log('[DEBUG] Status response:', statusResponse);
       
       if (!isComponentMounted.current) return;
       
       setStatus(statusResponse);
       
-      // Update running state based on status
-      const isCurrentlyRunning = statusResponse.status === 'running';
+      // Handle different status formats from API
+      const currentStatus = statusResponse.status || (statusResponse as any).state;
+      console.log(`[DEBUG] Current status: ${currentStatus}`);
+      
+      // Update running state based on status - handle various status formats
+      const isCurrentlyRunning = ['running', 'in_progress', 'pending'].includes(currentStatus);
       setIsRunning(isCurrentlyRunning);
       
       // If simulation completed or failed, stop polling
-      if (statusResponse.status === 'completed' || statusResponse.status === 'failed') {
+      if (['completed', 'failed', 'error', 'finished', 'success'].includes(currentStatus)) {
+        console.log(`[DEBUG] Simulation finished with status: ${currentStatus}`);
+        
         if (statusPollingRef.current) {
           clearInterval(statusPollingRef.current);
           statusPollingRef.current = null;
         }
         
+        if (logsPollingRef.current) {
+          clearInterval(logsPollingRef.current);
+          logsPollingRef.current = null;
+        }
+        
+        const isSuccess = ['completed', 'finished', 'success'].includes(currentStatus);
+        
         toast({
-          title: statusResponse.status === 'completed' ? 'Simulation Completed' : 'Simulation Failed',
-          description: statusResponse.status === 'completed' 
+          title: isSuccess ? 'Simulation Completed' : 'Simulation Failed',
+          description: isSuccess
             ? 'The simulation has finished successfully'
-            : 'The simulation encountered an error',
-          variant: statusResponse.status === 'completed' ? 'default' : 'destructive',
+            : `The simulation encountered an error: ${statusResponse.message || 'Unknown error'}`,
+          variant: isSuccess ? 'default' : 'destructive',
         });
       }
     } catch (error: any) {
+      console.error('[DEBUG] Status polling error:', error);
       logger.error('Failed to poll simulation status', 'useRealTimeSimulation', error);
       setError(`Status polling failed: ${error.message}`);
+      
+      // Show user-facing error
+      toast({
+        title: 'Status Check Failed',
+        description: `Unable to check simulation status: ${error.message}`,
+        variant: 'destructive',
+      });
     }
   }, [toast]);
 
@@ -77,21 +100,31 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
     if (!isComponentMounted.current) return;
     
     try {
+      console.log(`[DEBUG] Polling logs for simulation ${id}...`);
       const logsResponse = await simulationService.getSimulationLogs(id);
+      console.log('[DEBUG] Logs response:', logsResponse);
       
       if (!isComponentMounted.current) return;
+      
+      // Handle empty or null logs response
+      if (!logsResponse || !Array.isArray(logsResponse)) {
+        console.log('[DEBUG] No logs available or invalid format');
+        return;
+      }
       
       // Transform logs to match our interface
       const transformedLogs: LogEntry[] = logsResponse.map((log: any, index: number) => ({
         id: log.id || `log-${Date.now()}-${index}`,
         timestamp: log.timestamp || new Date().toISOString(),
-        agent: log.agent || 'System',
-        action: log.action || log.message || 'Unknown action',
-        outcome: log.outcome || log.result || 'No outcome specified',
+        agent: log.agent || log.source || 'System',
+        action: log.action || log.message || log.event || 'Unknown action',
+        outcome: log.outcome || log.result || log.status || 'No outcome specified',
       }));
       
+      console.log(`[DEBUG] Transformed ${transformedLogs.length} logs`);
       setLogs(transformedLogs);
     } catch (error: any) {
+      console.error('[DEBUG] Logs polling error:', error);
       logger.error('Failed to poll simulation logs', 'useRealTimeSimulation', error);
       // Don't set error state for logs polling failures as they're less critical
     }
@@ -130,28 +163,42 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
       }
       
       // Create simulation via real API
+      console.log('[DEBUG] Creating simulation with request:', request);
       const response = await simulationService.createSimulation(request);
-      const newSimulationId = response.id || (response as any).simulation_id;
+      console.log('[DEBUG] Create simulation response:', response);
+      
+      const newSimulationId = response.id || (response as any).simulation_id || (response as any).simulationId;
       
       if (!newSimulationId) {
+        console.error('[DEBUG] No simulation ID found in response:', response);
         throw new Error('No simulation ID returned from API');
       }
       
+      console.log(`[DEBUG] Created simulation with ID: ${newSimulationId}`);
       setSimulationId(newSimulationId);
       
       // Start the simulation
-      await simulationService.startSimulation(newSimulationId);
+      console.log(`[DEBUG] Starting simulation ${newSimulationId}`);
+      const startResponse = await simulationService.startSimulation(newSimulationId);
+      console.log('[DEBUG] Start simulation response:', startResponse);
       
       setIsRunning(true);
+      
+      // Start polling for status and logs immediately
+      console.log('[DEBUG] Starting polling intervals');
+      
+      // Do initial status check
+      await pollStatus(newSimulationId);
+      await pollLogs(newSimulationId);
       
       // Start polling for status and logs
       statusPollingRef.current = setInterval(() => {
         pollStatus(newSimulationId);
-      }, 2000); // Poll every 2 seconds
+      }, 3000); // Poll every 3 seconds to avoid overwhelming the API
       
       logsPollingRef.current = setInterval(() => {
         pollLogs(newSimulationId);
-      }, 1000); // Poll logs more frequently
+      }, 2000); // Poll logs every 2 seconds
       
       toast({
         title: 'Simulation Started',
