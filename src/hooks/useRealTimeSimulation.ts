@@ -36,13 +36,14 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
   const logsPollingRef = useRef<NodeJS.Timeout | null>(null);
   const isComponentMounted = useRef(true);
   const pollingStartTime = useRef<number | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   
   // Timeout after 5 minutes
   const POLLING_TIMEOUT_MS = 5 * 60 * 1000;
 
   // Poll simulation status
   const pollStatus = useCallback(async (id: string) => {
-    if (!isComponentMounted.current) return;
+    if (!isComponentMounted.current || abortControllerRef.current?.signal.aborted) return;
     
     // Check for timeout
     if (pollingStartTime.current && Date.now() - pollingStartTime.current > POLLING_TIMEOUT_MS) {
@@ -74,7 +75,7 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
       const statusResponse = await unifiedApiService.getSimulationStatus(id);
       console.log('[DEBUG] Status response:', statusResponse);
       
-      if (!isComponentMounted.current) return;
+      if (!isComponentMounted.current || abortControllerRef.current?.signal.aborted) return;
       
       setStatus(statusResponse);
       
@@ -128,14 +129,14 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
 
   // Poll simulation logs
   const pollLogs = useCallback(async (id: string) => {
-    if (!isComponentMounted.current) return;
+    if (!isComponentMounted.current || abortControllerRef.current?.signal.aborted) return;
     
     try {
       console.log(`[DEBUG] Polling logs for simulation ${id}...`);
       const logsResponse = await unifiedApiService.getSimulationLogs(id);
       console.log('[DEBUG] Logs response:', logsResponse);
       
-      if (!isComponentMounted.current) return;
+      if (!isComponentMounted.current || abortControllerRef.current?.signal.aborted) return;
       
       // Handle empty or null logs response
       if (!logsResponse || !Array.isArray(logsResponse)) {
@@ -175,6 +176,12 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
     try {
       setError(null);
       setLogs([]);
+      
+      // Create new AbortController for this simulation
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
       
       // Debug: Log frontend state before simulation starts
       const savedNodes = localStorage.getItem('hospital-nodes');
@@ -325,7 +332,7 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
       
       setIsRunning(false);
       
-      // Clear polling intervals
+      // Clear polling intervals and abort ongoing requests
       if (statusPollingRef.current) {
         clearInterval(statusPollingRef.current);
         statusPollingRef.current = null;
@@ -334,6 +341,11 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
       if (logsPollingRef.current) {
         clearInterval(logsPollingRef.current);
         logsPollingRef.current = null;
+      }
+      
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
       }
       
       toast({
@@ -362,7 +374,7 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
     setStatus(null);
     setError(null);
     
-    // Clear all polling intervals
+    // Clear all polling intervals and abort requests
     if (statusPollingRef.current) {
       clearInterval(statusPollingRef.current);
       statusPollingRef.current = null;
@@ -371,6 +383,11 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
     if (logsPollingRef.current) {
       clearInterval(logsPollingRef.current);
       logsPollingRef.current = null;
+    }
+    
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
     
     toast({
@@ -386,12 +403,17 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
     return () => {
       isComponentMounted.current = false;
       
+      // Clear all intervals and abort any ongoing requests
       if (statusPollingRef.current) {
         clearInterval(statusPollingRef.current);
       }
       
       if (logsPollingRef.current) {
         clearInterval(logsPollingRef.current);
+      }
+      
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, []);
