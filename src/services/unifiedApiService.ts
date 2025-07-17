@@ -211,6 +211,7 @@ class UnifiedApiService {
 
       // First, load the model
       const loadPayload = {
+        model_id: request.scenario,  // API expects model_id, not model_name
         model_name: request.scenario,
         nodes: nodes.nodes || [],
         red_agent: agents.redAgent || {},
