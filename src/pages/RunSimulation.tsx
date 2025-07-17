@@ -4,6 +4,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import LogConsole from "@/components/LogConsole";
 import SimulationControls from "@/components/SimulationControls";
 import { SimulationDebugPanel } from "@/components/SimulationDebugPanel";
+import DemoToggle from "@/components/DemoToggle";
 import { CenteredLoader, SimulationControlsSkeleton, LogConsoleSkeleton } from "@/components/LoadingStates";
 import { environment } from "@/utils/environment";
 import { useSimulationExecution } from "@/hooks/useSimulationExecution";
@@ -56,6 +57,8 @@ const RunSimulationContent = () => {
         <h1 className="text-3xl font-bold text-gray-900">Run Simulation</h1>
         <p className="text-gray-600 mt-2">Execute adversarial AI simulations against your infrastructure</p>
       </div>
+
+      <DemoToggle />
 
       <ErrorBoundary>
         <SimulationControls

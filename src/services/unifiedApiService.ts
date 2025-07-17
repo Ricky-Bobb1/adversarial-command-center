@@ -432,15 +432,29 @@ class UnifiedApiService {
       logger.debug('[SCENARIOS] Raw response from /aaa/sim/models:', 'UnifiedApiService', response);
 
       // Extract scenario names from models response
-      const scenarios = Array.isArray(response) ? response : 
-                       response.models ? response.models :
-                       response.scenarios ? response.scenarios :
-                       Object.keys(response).filter(key => typeof response[key] === 'object');
+      let scenarios: string[] = [];
+      
+      if (Array.isArray(response)) {
+        // Response is an array of model objects, extract names
+        scenarios = response.map((model: any) => model.name || model.id).filter(Boolean);
+      } else if (response.models && Array.isArray(response.models)) {
+        scenarios = response.models.map((model: any) => model.name || model.id).filter(Boolean);
+      } else if (response.scenarios && Array.isArray(response.scenarios)) {
+        scenarios = response.scenarios;
+      } else {
+        // Fallback - use object keys if available
+        scenarios = Object.keys(response).filter(key => typeof response[key] === 'object');
+      }
 
       // Add local setup scenario if nodes are configured
       const savedNodes = localStorage.getItem('hospital-nodes');
       if (savedNodes) {
         scenarios.unshift('local-hospital-setup');
+      }
+
+      // If no scenarios found, provide defaults
+      if (scenarios.length === 0) {
+        scenarios = ['healthcare-apt-simulation', 'ransomware-response-drill', 'medical-device-compromise'];
       }
 
       logger.debug('[SCENARIOS] Processed scenarios:', 'UnifiedApiService', scenarios);
