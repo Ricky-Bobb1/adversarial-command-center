@@ -45,9 +45,22 @@ class AdversaApiService {
 
   // Simulation management endpoints
   async createSimulation(request: CreateSimulationRequest): Promise<CreateSimulationResponse> {
-    return apiClient.post(`${this.baseUrl}/api/v1/simulations`, request, {
-      requestId: `create-simulation-${Date.now()}`,
-    });
+    // Load model first, then we'll get sim_id for running
+    const loadResponse = await apiClient.post(`${this.baseUrl}/aaa/sim/model/load`, {
+      model_id: request.scenario, // Use scenario as model_id
+      step_by_step: false // Run to completion
+    }, {
+      requestId: `load-simulation-${Date.now()}`,
+    }) as any;
+    
+    console.log('[DEBUG] Load simulation response:', loadResponse);
+    
+    // Return response in expected format
+    return {
+      id: loadResponse.sim_id || `sim-${Date.now()}`,
+      status: { status: (loadResponse.sim_status?.toLowerCase() || 'pending') as any },
+      createdAt: new Date().toISOString()
+    };
   }
 
   async getSimulation(simulationId: string): Promise<SimulationResult> {
@@ -63,9 +76,21 @@ class AdversaApiService {
   }
 
   async startSimulation(simulationId: string): Promise<SimulationStatus> {
-    return apiClient.post(`${this.baseUrl}/api/v1/simulations/${simulationId}/start`, undefined, {
+    // Run the simulation
+    const runResponse = await apiClient.post(`${this.baseUrl}/aaa/sim/run`, {
+      sim_id: simulationId,
+      mode: "auto" // Run to completion
+    }, {
       requestId: `start-simulation-${simulationId}`,
-    });
+    }) as any;
+    
+    console.log('[DEBUG] Run simulation response:', runResponse);
+    
+    // Return status in expected format
+    return {
+      status: (runResponse.sim_status?.toLowerCase() || 'running') as any,
+      message: runResponse.message
+    };
   }
 
   async stopSimulation(simulationId: string): Promise<SimulationStatus> {
@@ -75,9 +100,43 @@ class AdversaApiService {
   }
 
   async getSimulationStatus(simulationId: string): Promise<SimulationStatus> {
-    return apiClient.get(`${this.baseUrl}/api/v1/simulations/${simulationId}/status`, {
+    const statusResponse = await apiClient.get(`${this.baseUrl}/aaa/sim/status/${simulationId}`, {
       requestId: `status-${simulationId}`,
-    });
+    }) as any;
+    
+    console.log('[DEBUG] Status API response:', statusResponse);
+    
+    // Handle string response (like "Loaded", "Running", "Completed")
+    if (typeof statusResponse === 'string') {
+      // Map known statuses to our types
+      const statusMap: Record<string, string> = {
+        'loaded': 'pending',
+        'running': 'running', 
+        'completed': 'completed',
+        'error': 'failed',
+        'failed': 'failed'
+      };
+      
+      return {
+        status: (statusMap[statusResponse.toLowerCase()] || 'pending') as any,
+        message: `Simulation is ${statusResponse}`
+      };
+    }
+    
+    // Handle object response
+    const rawStatus = statusResponse.status?.toLowerCase() || statusResponse.sim_status?.toLowerCase() || 'pending';
+    const statusMap: Record<string, string> = {
+      'loaded': 'pending',
+      'running': 'running', 
+      'completed': 'completed',
+      'error': 'failed',
+      'failed': 'failed'
+    };
+    
+    return {
+      status: (statusMap[rawStatus] || 'pending') as any,
+      message: statusResponse.message || `Status: ${rawStatus}`
+    };
   }
 
   async deleteSimulation(simulationId: string): Promise<void> {
@@ -106,31 +165,58 @@ class AdversaApiService {
     });
   }
 
-  // Scenarios endpoints
+  // Scenarios endpoints (get simulation models as scenarios)
   async getScenarios(): Promise<string[]> {
-    const response = await apiClient.get(`${this.baseUrl}/api/v1/scenarios`, {
-      requestId: 'list-scenarios',
-    });
-    
-    // Handle the response safely with type checking
-    if (response && typeof response === 'object' && 'scenarios' in response) {
-      return (response as { scenarios: string[] }).scenarios || [];
+    try {
+      const response = await apiClient.get(`${this.baseUrl}/aaa/sim/models/summary`, {
+        requestId: 'list-scenarios',
+      }) as any;
+      
+      console.log('[DEBUG] Scenarios/models response:', response);
+      
+      // Handle array of model summaries
+      if (Array.isArray(response)) {
+        return response.map((model: any) => model.id || model.name || 'Unknown Model');
+      }
+      
+      // Handle single model object
+      if (response && typeof response === 'object') {
+        return [response.id || response.name || 'Default Model'];
+      }
+      
+      // Fallback to default scenarios
+      return ['default-scenario', 'enterprise-network', 'cloud-infrastructure'];
+    } catch (error) {
+      console.log('[DEBUG] Failed to fetch scenarios, using defaults:', error);
+      return ['default-scenario', 'enterprise-network', 'cloud-infrastructure'];
     }
-    
-    // If response is an array, return it directly
-    if (Array.isArray(response)) {
-      return response;
-    }
-    
-    // Fallback to empty array
-    return [];
   }
 
-  // Real-time simulation logs (if supported by the API)
+  // Get simulation details/logs
   async getSimulationLogs(simulationId: string): Promise<any[]> {
-    return apiClient.get(`${this.baseUrl}/api/v1/simulations/${simulationId}/logs`, {
-      requestId: `logs-${simulationId}`,
-    });
+    try {
+      const detailResponse = await apiClient.get(`${this.baseUrl}/aaa/sim/detail/${simulationId}`, {
+        requestId: `logs-${simulationId}`,
+      }) as any;
+      
+      console.log('[DEBUG] Simulation detail response:', detailResponse);
+      
+      // Extract logs from the simulation detail response
+      if (detailResponse && detailResponse.steps && Array.isArray(detailResponse.steps)) {
+        return detailResponse.steps.map((step: any, index: number) => ({
+          id: `step-${index}`,
+          timestamp: step.timestamp || new Date().toISOString(),
+          agent: step.agent_name || step.agent || 'System',
+          action: step.action || step.description || 'Action executed',
+          outcome: step.outcome || step.result || step.message || 'Action completed'
+        }));
+      }
+      
+      return [];
+    } catch (error) {
+      console.log('[DEBUG] No simulation details available yet');
+      return [];
+    }
   }
 }
 

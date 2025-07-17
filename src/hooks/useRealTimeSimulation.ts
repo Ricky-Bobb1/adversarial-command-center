@@ -35,10 +35,39 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
   const statusPollingRef = useRef<NodeJS.Timeout | null>(null);
   const logsPollingRef = useRef<NodeJS.Timeout | null>(null);
   const isComponentMounted = useRef(true);
+  const pollingStartTime = useRef<number | null>(null);
+  
+  // Timeout after 5 minutes
+  const POLLING_TIMEOUT_MS = 5 * 60 * 1000;
 
   // Poll simulation status
   const pollStatus = useCallback(async (id: string) => {
     if (!isComponentMounted.current) return;
+    
+    // Check for timeout
+    if (pollingStartTime.current && Date.now() - pollingStartTime.current > POLLING_TIMEOUT_MS) {
+      console.log('[DEBUG] Polling timeout reached, stopping polling');
+      
+      if (statusPollingRef.current) {
+        clearInterval(statusPollingRef.current);
+        statusPollingRef.current = null;
+      }
+      
+      if (logsPollingRef.current) {
+        clearInterval(logsPollingRef.current);
+        logsPollingRef.current = null;
+      }
+      
+      setIsRunning(false);
+      setError('Simulation timeout - took longer than expected');
+      
+      toast({
+        title: 'Simulation Timeout',
+        description: 'The simulation may have completed but failed to return a status. Check the Results page manually.',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     try {
       console.log(`[DEBUG] Polling status for simulation ${id}...`);
@@ -70,6 +99,8 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
           clearInterval(logsPollingRef.current);
           logsPollingRef.current = null;
         }
+        
+        pollingStartTime.current = null;
         
         const isSuccess = ['completed', 'finished', 'success'].includes(currentStatus);
         
@@ -186,6 +217,7 @@ export const useRealTimeSimulation = (): UseRealTimeSimulationReturn => {
       
       // Start polling for status and logs immediately
       console.log('[DEBUG] Starting polling intervals');
+      pollingStartTime.current = Date.now();
       
       // Do initial status check
       await pollStatus(newSimulationId);

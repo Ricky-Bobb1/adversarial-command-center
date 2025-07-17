@@ -176,7 +176,7 @@ export const SimulationDebugPanel = ({
               <Button 
                 size="sm" 
                 variant="outline" 
-                onClick={() => window.open('/api/v1/simulations', '_blank')}
+                onClick={() => window.open('https://4ao182xl79.execute-api.us-east-1.amazonaws.com/alpha/redoc', '_blank')}
                 className="text-xs"
               >
                 Open API Docs
