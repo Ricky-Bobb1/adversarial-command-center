@@ -199,10 +199,27 @@ class AdversaApiService {
     });
   }
 
-  // Scenarios endpoints (get simulation models as scenarios)
+  // Scenarios endpoints (get simulation models as scenarios + local node configs)
   async getScenarios(): Promise<string[]> {
     try {
       console.log('[DEBUG] Fetching scenarios from /aaa/sim/models...');
+      
+      // Check for saved local node configuration
+      const savedNodes = localStorage.getItem('hospital-nodes');
+      const localScenarios: string[] = [];
+      
+      if (savedNodes) {
+        try {
+          const nodeData = JSON.parse(savedNodes);
+          if (nodeData.nodes && nodeData.nodes.length > 0) {
+            localScenarios.push('local-hospital-setup');
+            console.log('[DEBUG] Added local hospital setup as scenario');
+          }
+        } catch (error) {
+          console.warn('[DEBUG] Failed to parse saved nodes');
+        }
+      }
+      
       const response = await apiClient.get(`${this.baseUrl}/aaa/sim/models`, {
         requestId: 'list-scenarios',
       }) as any;
@@ -213,22 +230,15 @@ class AdversaApiService {
       if (Array.isArray(response)) {
         const scenarios = response.map((model: any) => model.id || model.name || 'Unknown Model');
         console.log('[DEBUG] Extracted scenarios:', scenarios);
-        return scenarios;
+        return [...localScenarios, ...scenarios];
       }
       
-      // Handle single model object
-      if (response && typeof response === 'object') {
-        const scenario = response.id || response.name || 'Default Model';
-        console.log('[DEBUG] Single scenario:', scenario);
-        return [scenario];
-      }
-      
-      // Fallback to default scenarios
-      console.log('[DEBUG] Using fallback scenarios');
-      return ['default-scenario', 'enterprise-network', 'cloud-infrastructure'];
+      // Fallback scenarios including local setup if available
+      const fallbackScenarios = ['default-scenario', 'enterprise-network', 'cloud-infrastructure'];
+      return [...localScenarios, ...fallbackScenarios];
     } catch (error) {
       console.error('[DEBUG] Failed to fetch scenarios:', error);
-      return ['default-scenario', 'enterprise-network', 'cloud-infrastructure'];
+      return ['local-hospital-setup', 'default-scenario', 'enterprise-network'];
     }
   }
 
