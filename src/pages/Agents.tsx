@@ -28,6 +28,13 @@ interface AgentConfig {
 
 const Agents = () => {
   const { toast } = useToast();
+  const { 
+    state,
+    setAgentConfig,
+    updateRedAgent, 
+    updateBlueAgent
+  } = useAppState();
+  
   const [config, setConfig] = useState<AgentConfig>({
     redAgent: { model: "", strategies: [] },
     blueAgent: { model: "", strategies: [] },
@@ -54,9 +61,35 @@ const Agents = () => {
       try {
         setIsLoading(true);
         
-        // Load agent config
-        const data = await fetchMockData<AgentConfig>('agents');
-        setConfig(data);
+        // Load agent config from context first, then fallback to localStorage
+        let agentData: AgentConfig = {
+          redAgent: { model: "", strategies: [] },
+          blueAgent: { model: "", strategies: [] },
+          humanInTheLoop: false
+        };
+        
+        // If context has agent config, convert from context format to local format
+        if (state.agentConfig?.redAgent?.model) {
+          agentData.redAgent.model = state.agentConfig.redAgent.model;
+          agentData.redAgent.strategies = state.agentConfig.redAgent.strategy ? state.agentConfig.redAgent.strategy.split(', ') : [];
+        }
+        
+        if (state.agentConfig?.blueAgent?.model) {
+          agentData.blueAgent.model = state.agentConfig.blueAgent.model;
+          agentData.blueAgent.strategies = state.agentConfig.blueAgent.strategy ? state.agentConfig.blueAgent.strategy.split(', ') : [];
+        }
+        
+        // If context is empty, try localStorage
+        if (!state.agentConfig?.redAgent?.model && !state.agentConfig?.blueAgent?.model) {
+          try {
+            const data = await fetchMockData<AgentConfig>('agents');
+            agentData = data;
+          } catch (error) {
+            console.warn('[DEBUG] Could not load from mock data, using defaults');
+          }
+        }
+        
+        setConfig(agentData);
         
         // Load supported models from backend
         if (!environment.enableMockApi) {
@@ -166,9 +199,16 @@ const Agents = () => {
     try {
       setIsSaving(true);
       
-      // Save to localStorage for use in simulation
+      // Update AppStateContext with new format
+      const contextConfig = {
+        redAgent: { model: config.redAgent.model, strategy: config.redAgent.strategies.join(', ') },
+        blueAgent: { model: config.blueAgent.model, strategy: config.blueAgent.strategies.join(', ') }
+      };
+      setAgentConfig(contextConfig);
+      
+      // Save to localStorage for backwards compatibility
       localStorage.setItem('agent-config', JSON.stringify(config));
-      console.log('[DEBUG] Saved agent config to localStorage:', config);
+      console.log('[DEBUG] Saved agent config to localStorage and context:', config);
       
       // Also save to mock API for backwards compatibility
       await postToMockApi(mockApiEndpoints.agents, config);

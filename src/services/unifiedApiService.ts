@@ -231,7 +231,10 @@ class UnifiedApiService {
         `/api/simulations/run`,
         `/aaa/sim/run`,
         'POST',
-        { model_name: request.scenario },
+        { 
+          model_id: request.scenario,
+          model_name: request.scenario 
+        },
         `run-simulation-${Date.now()}`
       );
 
