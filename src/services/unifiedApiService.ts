@@ -186,7 +186,7 @@ class UnifiedApiService {
   // ============================================
 
   async createSimulation(request: CreateSimulationRequest): Promise<CreateSimulationResponse> {
-    // For real API, we need to load the model first, then run simulation
+    // For real API, we need to create the model first, then load it, then run simulation
     if (this.isRealMode) {
       try {
         // Load nodes from localStorage
@@ -204,65 +204,128 @@ class UnifiedApiService {
         const nodes = JSON.parse(savedNodes);
         const agents = JSON.parse(savedAgents);
 
-        logger.debug('[SIMULATION] Loading model with nodes and agents', 'UnifiedApiService', {
+        logger.debug('[SIMULATION] Creating simulation model', 'UnifiedApiService', {
           nodeCount: nodes.nodes?.length || 0,
           hasRedAgent: !!agents.redAgent,
           hasBlueAgent: !!agents.blueAgent
         });
 
-        // First, load the model
-        const loadPayload = {
-          model_id: request.scenario,  // API expects model_id, not model_name
-          model_name: request.scenario,
-          nodes: nodes.nodes || [],
-          red_agent: agents.redAgent || {},
-          blue_agent: agents.blueAgent || {}
+        // First, create the SimModel if it doesn't exist
+        const modelPayload = {
+          name: request.scenario,
+          description: `Healthcare cybersecurity simulation model: ${request.scenario}`,
+          nodes: (nodes.nodes || []).map((node: any) => ({
+            id: node.id,
+            name: node.name,
+            node_type: node.type === 'Human' ? 'Person' : 'Asset',
+            properties: [
+              { key: 'type', value: node.type },
+              { key: 'services', value: node.services?.join(', ') || 'none' },
+              { key: 'capabilities', value: node.capabilities || 'none' },
+              { key: 'vulnerabilities', value: node.vulnerabilities || 'none' }
+            ],
+            services: (node.services || []).map((service: string) => ({ name: service })),
+            resources: [],
+            constraints: null,
+            children: [],
+            vulnerabilities: node.vulnerabilities ? [{
+              id: `vuln-${node.id}`,
+              type: 'software',
+              subtype: 'Misconfiguration',
+              description: node.vulnerabilities,
+              vclass: 'configured',
+              outcome_type: 'ProbeSucceeded',
+              cost: 1.0,
+              granted_access: 'user'
+            }] : [],
+            firewalls: [],
+            importance_score: 1.0,
+            reward_score: null,
+            credentials: null
+          }))
         };
 
-        await this.makeRequest(
-          '/api/simulations',  // Mock would create simulation directly
-          '/aaa/sim/model/load',  // Real API loads model first
+        let modelId: string;
+
+        try {
+          // Try to create the model
+          logger.debug('[SIMULATION] Creating new SimModel', 'UnifiedApiService', modelPayload);
+          const createModelResponse = await this.makeRequest<{id: string}>(
+            '/api/simulations/model', // Mock endpoint
+            '/aaa/sim/models', // Real API endpoint
+            'POST',
+            modelPayload,
+            `create-model-${Date.now()}`
+          );
+          
+          modelId = createModelResponse.id || request.scenario;
+          logger.debug('[SIMULATION] Created SimModel with ID:', modelId);
+          
+        } catch (modelCreateError: any) {
+          // If model creation fails, try to use existing model or fall back
+          logger.warn('[SIMULATION] Model creation failed, trying to use existing model', 'UnifiedApiService', {
+            error: modelCreateError.message,
+            modelName: request.scenario
+          });
+          modelId = request.scenario;
+        }
+
+        // Then, load the model
+        const loadPayload = {
+          model_id: modelId
+        };
+
+        const loadResponse = await this.makeRequest<{sim_id: string}>(
+          '/api/simulations/load', // Mock endpoint
+          '/aaa/sim/model/load', // Real API endpoint
           'POST',
           loadPayload,
           `load-model-${Date.now()}`
         );
 
-        // Then run the simulation
+        logger.debug('[SIMULATION] Model loaded successfully', 'UnifiedApiService', loadResponse);
+
+        // Finally, run the simulation
         const runResponse = await this.makeRequest<CreateSimulationResponse>(
           `/api/simulations/run`,
           `/aaa/sim/run`,
           'POST',
           { 
-            model_id: request.scenario,
-            model_name: request.scenario 
+            sim_id: loadResponse.sim_id,
+            step_mode: false,
+            timestamp: new Date().toISOString()
           },
           `run-simulation-${Date.now()}`
         );
 
-        return runResponse;
+        return {
+          id: loadResponse.sim_id,
+          status: {
+            status: "running" as const,
+            progress: 0,
+            message: "Simulation started successfully"
+          },
+          createdAt: new Date().toISOString()
+        };
         
       } catch (error: any) {
-        // If model not found (404), fall back to mock simulation
-        if (error.status === 404 && error.details?.detail?.includes('SimModel not found')) {
-          logger.warn('[SIMULATION] Model not found on backend, falling back to mock simulation', 'UnifiedApiService', {
-            scenario: request.scenario,
-            error: error.message
-          });
-          
-          // Generate mock response
-          return {
-            id: `mock-sim-${Date.now()}`,
-            status: {
-              status: "running" as const,
-              progress: 0,
-              message: "Starting mock simulation..."
-            },
-            createdAt: new Date().toISOString()
-          };
-        }
+        // If any step fails, fall back to mock simulation
+        logger.warn('[SIMULATION] Backend simulation failed, falling back to mock', 'UnifiedApiService', {
+          scenario: request.scenario,
+          error: error.message,
+          status: error.status
+        });
         
-        // Re-throw other errors
-        throw error;
+        // Generate mock response
+        return {
+          id: `mock-sim-${Date.now()}`,
+          status: {
+            status: "running" as const,
+            progress: 0,
+            message: "Backend unavailable - running local simulation"
+          },
+          createdAt: new Date().toISOString()
+        };
       }
     }
 
@@ -317,13 +380,9 @@ class UnifiedApiService {
   }
 
   async startSimulation(simulationId: string): Promise<SimulationStatus> {
-    return this.makeRequest<SimulationStatus>(
-      `/api/simulations/${simulationId}/start`,
-      `/aaa/sim/start/${simulationId}`,
-      'POST',
-      undefined,
-      `start-${simulationId}`
-    );
+    // For the new API, simulations are already started when run, so this is a no-op
+    // But we return the current status
+    return this.getSimulationStatus(simulationId);
   }
 
   async stopSimulation(simulationId: string): Promise<SimulationStatus> {
