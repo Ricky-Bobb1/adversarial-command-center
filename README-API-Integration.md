@@ -1,216 +1,95 @@
-# Adversa Agentic AI - Frontend Backend Integration
 
-This document describes how the Adversa Agentic AI frontend integrates with the FastAPI backend deployed on AWS.
+# Adversa Agentic AI - API Integration Guide
+
+## Production API Configuration
+
+The Adversa Agentic AI frontend is now configured to connect to the live FastAPI backend deployed on AWS.
+
+### Production Endpoint
+```
+Base URL: https://4ao182xl79.execute-api.us-east-1.amazonaws.com/alpha
+```
+
+### API Documentation
+- **Swagger UI**: https://4ao182xl79.execute-api.us-east-1.amazonaws.com/alpha/docs
+- **ReDoc**: https://4ao182xl79.execute-api.us-east-1.amazonaws.com/alpha/redoc
+- **OpenAPI Schema**: https://4ao182xl79.execute-api.us-east-1.amazonaws.com/alpha/openapi.json
 
 ## Environment Configuration
 
+### Default Behavior
+The application now defaults to using the production API. Mock mode is disabled by default.
+
 ### Environment Variables
-
-Create a `.env` file in the root directory with the following variables:
+To override the default configuration, set these environment variables:
 
 ```bash
-# API Configuration
-VITE_API_BASE_URL=https://your-api-gateway-url.amazonaws.com/Prod
-VITE_ENABLE_MOCK_API=false
+# Use a different API endpoint
+VITE_API_BASE_URL=https://your-custom-endpoint.com
 
-# Optional Configuration
-VITE_LOG_LEVEL=debug
-VITE_CACHE_TIMEOUT=300000
-VITE_RETRY_ATTEMPTS=3
-```
-
-### Environment Modes
-
-#### Production Mode (Live API)
-```bash
-VITE_API_BASE_URL=https://your-api-gateway-url.amazonaws.com/Prod
-VITE_ENABLE_MOCK_API=false
-```
-
-#### Development Mode (Mock API)
-```bash
+# Enable mock mode for development
 VITE_ENABLE_MOCK_API=true
-# VITE_API_BASE_URL is ignored when mock mode is enabled
-```
 
-#### Local Development with Real API
-```bash
-VITE_API_BASE_URL=http://localhost:8000
-VITE_ENABLE_MOCK_API=false
+# Set log level
+VITE_LOG_LEVEL=debug
 ```
 
 ## API Integration Features
 
-### 1. Real-Time Simulation Execution
-- **Endpoint**: `POST /api/v1/simulations`
-- **Functionality**: Creates and starts simulations
-- **Real-time Updates**: Polls status every 2 seconds during execution
-- **Logs Streaming**: Fetches logs every 1 second
+### Real-Time Simulation
+- ✅ POST `/simulations` - Create and start simulations
+- ✅ GET `/simulations/{id}/status` - Poll simulation status
+- ✅ GET `/simulations/{id}/logs` - Stream simulation logs
+- ✅ GET `/simulations/{id}` - Get simulation results
 
-### 2. Simulation Status Monitoring
-- **Endpoint**: `GET /api/v1/simulations/{id}/status`
-- **Functionality**: Real-time status updates (pending, running, completed, failed)
-- **Auto-polling**: Automatically polls while simulation is running
+### Agent Management
+- ✅ GET `/agents` - List available agents
+- ✅ POST `/agents` - Create new agents
+- ✅ GET `/agents/{id}` - Get agent details
 
-### 3. Live Results Display
-- **Endpoint**: `GET /api/v1/simulations/{id}`
-- **Functionality**: Fetches complete simulation results
-- **Integration**: Seamlessly switches between live and stored results
+### Network Topology
+- ✅ GET `/network/topology` - Get network configuration
+- ✅ GET `/scenarios` - List available scenarios
 
-### 4. Agent Configuration
-- **Endpoint**: `GET /api/v1/agents`, `POST /api/v1/agents`
-- **Functionality**: Manages Red/Blue agent configurations
-- **Sync**: UI selections map directly to API payload structure
+### Health Monitoring
+- ✅ GET `/health` - API health check
 
-### 5. Scenario Management
-- **Endpoint**: `GET /api/v1/scenarios`
-- **Functionality**: Fetches available simulation scenarios
-- **Dynamic**: Updates scenario dropdown based on backend data
+## Testing the Integration
 
-## Error Handling & Resilience
+### From the UI
+1. Navigate to **Settings** page
+2. Click **Test Connection** to verify API connectivity
+3. View **Swagger UI** or **ReDoc** for detailed API documentation
 
-### Automatic Retry Logic
-- **Retries**: Up to 3 attempts for failed requests
-- **Backoff**: Exponential backoff strategy
-- **Rate Limiting**: Handles 429 responses gracefully
-
-### Fallback Mechanisms
-- **Mock Mode**: Automatic fallback to mock data in development
-- **Stored Results**: Falls back to locally stored results if API fails
-- **Graceful Degradation**: UI remains functional even with API issues
-
-### User Feedback
-- **Loading States**: Proper loading indicators during API calls
-- **Error Messages**: User-friendly error messages and toasts
-- **Status Indicators**: Clear indication of API connection status
-
-## Development Tools
-
-### API Documentation Access
-The Settings page provides direct links to:
-- **Swagger UI**: `/docs`
-- **ReDoc**: `/redoc`
-- **OpenAPI Schema**: `/openapi.json`
-
-### Connection Testing
-- **Health Check**: Built-in API connection testing
-- **Status Monitoring**: Real-time connection status in Settings
-- **Debug Mode**: Console logging of all API requests/responses
-
-### Mock vs Live Mode Toggle
-- **Environment-based**: Controlled via environment variables
-- **Visual Indicators**: Clear badges showing current mode
-- **Seamless Switching**: No code changes required
-
-## File Structure
-
-### Core Integration Files
+### From the Console
+```javascript
+// Check current configuration
+console.log('API Base URL:', window.environment?.apiBaseUrl);
+console.log('Mock Mode:', window.environment?.enableMockApi);
 ```
-src/
-├── services/
-│   ├── api.ts                 # Base API client with retry logic
-│   ├── adversaApiService.ts   # FastAPI service wrapper
-│   └── simulationService.ts   # Simulation-specific API calls
-├── hooks/
-│   ├── useRealTimeSimulation.ts # Real-time simulation hook
-│   └── useSimulation.ts        # TanStack Query hooks
-├── utils/
-│   ├── environment.ts         # Environment configuration
-│   └── mockApi.ts            # Mock API for development
-└── pages/
-    ├── RunSimulation.tsx     # Updated with real-time integration
-    ├── Results.tsx           # Live/stored results display
-    └── Settings.tsx          # API configuration interface
-```
-
-## Usage Examples
-
-### Starting a Real Simulation
-```typescript
-import { useRealTimeSimulation } from '@/hooks/useRealTimeSimulation';
-
-const { startSimulation, isRunning, logs, status } = useRealTimeSimulation();
-
-// Start simulation with scenario
-await startSimulation('advanced-phishing-attack', {
-  duration: 3600,
-  intensity: 'high'
-});
-```
-
-### Monitoring Simulation Progress
-```typescript
-// Real-time status updates
-useEffect(() => {
-  if (status?.status === 'completed') {
-    console.log('Simulation completed successfully');
-  }
-}, [status]);
-
-// Real-time log updates
-useEffect(() => {
-  console.log(`Received ${logs.length} log entries`);
-}, [logs]);
-```
-
-### Switching Between Mock and Live API
-```typescript
-import { environment } from '@/utils/environment';
-
-if (environment.enableMockApi) {
-  // Use mock data for development
-} else {
-  // Use live API
-}
-```
-
-## Deployment Considerations
-
-### Production Deployment
-1. Set `VITE_API_BASE_URL` to your AWS API Gateway URL
-2. Set `VITE_ENABLE_MOCK_API=false`
-3. Ensure CORS is configured on your API Gateway
-4. Configure proper error handling for production
-
-### Development Setup
-1. For local development with mock data: Set `VITE_ENABLE_MOCK_API=true`
-2. For local development with real API: Set `VITE_API_BASE_URL=http://localhost:8000`
-3. Use the Settings page to test API connectivity
-
-### Security Notes
-- All API keys should be handled server-side
-- Frontend only communicates with public endpoints
-- Environment variables are exposed to the browser (use carefully)
-- Consider implementing authentication headers if needed
 
 ## Troubleshooting
 
-### Common Issues
+### Connection Issues
+- Verify the API endpoint is accessible
+- Check browser console for CORS errors
+- Ensure the AWS API Gateway is properly deployed
 
-1. **API Connection Failed**
-   - Check `VITE_API_BASE_URL` is correct
-   - Verify API is running and accessible
-   - Check CORS configuration
+### Debug Mode
+Enable debug logging by setting `VITE_LOG_LEVEL=debug` to see detailed API request/response logs.
 
-2. **Simulations Not Starting**
-   - Verify scenario exists in backend
-   - Check agent configuration payload
-   - Review browser console for errors
+### Mock vs Production Mode
+- **Mock Mode**: Uses local JSON files for development
+- **Production Mode**: Connects to live AWS API Gateway endpoint
 
-3. **Real-time Updates Not Working**
-   - Check polling intervals in browser network tab
-   - Verify simulation status endpoint responds correctly
-   - Ensure WebSocket connections if using SSE
+## Development Workflow
 
-### Debug Tools
-- Use Settings page to test API connection
-- Check browser console for detailed API logs
-- Monitor Network tab for request/response details
-- Use API documentation to verify endpoint behavior
+1. **Development**: Use mock mode for rapid UI development
+2. **Testing**: Switch to production mode to test real API integration
+3. **Production**: Always uses the live API endpoint
 
-## Next Steps
+---
 
-1. **Authentication Integration**: Add login/logout functionality
-2. **WebSocket Support**: Consider WebSocket for real-time updates
-3. **Offline Support**: Implement service worker for offline capabilities
-4. **Performance Optimization**: Add caching strategies for better performance
+Last Updated: $(date)
+API Version: v1
+Backend: FastAPI on AWS Lambda + API Gateway
