@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Target, Shield, AlertTriangle, Activity, TrendingUp } from "lucide-react";
+import { formatPercentage } from "@/utils/formatters";
 import type { LogEntry } from "@/types/simulation";
 
 interface ComplianceMetricsProps {
@@ -113,7 +114,7 @@ export const ComplianceMetrics = ({ logs, timestamp }: ComplianceMetricsProps) =
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-red-600">{metrics.attackSuccessRate}%</div>
+          <div className="text-3xl font-bold text-red-600">{formatPercentage(metrics.attackSuccessRate)}</div>
           <p className="text-sm text-gray-500">Successful attacks vs total</p>
           <Badge variant="outline" className="mt-2">
             {metrics.attackSuccessRate <= 20 ? 'Excellent' : metrics.attackSuccessRate <= 40 ? 'Good' : 'Critical'}
@@ -161,7 +162,7 @@ export const ComplianceMetrics = ({ logs, timestamp }: ComplianceMetricsProps) =
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-indigo-600">{metrics.complianceScore}%</div>
+          <div className="text-3xl font-bold text-indigo-600">{formatPercentage(metrics.complianceScore)}</div>
           <p className="text-sm text-gray-500">Overall regulatory alignment</p>
           <Badge variant="outline" className="mt-2">
             {metrics.complianceScore >= 80 ? 'Compliant' : metrics.complianceScore >= 60 ? 'Partial' : 'Non-Compliant'}

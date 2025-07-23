@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { FileText, Target, Shield, AlertCircle, Activity } from "lucide-react";
+import { formatPercentage } from "@/utils/formatters";
 import type { LogEntry } from "@/types/simulation";
 
 interface RegulatoryFrameworkProps {
@@ -128,7 +129,7 @@ export const RegulatoryFramework = ({ logs }: RegulatoryFrameworkProps) => {
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{category.name}</span>
                   <Badge variant={category.score >= 80 ? 'default' : category.score >= 60 ? 'secondary' : 'destructive'}>
-                    {category.score}%
+                    {formatPercentage(category.score)}
                   </Badge>
                 </div>
                 <Progress value={category.score} className="h-2" />

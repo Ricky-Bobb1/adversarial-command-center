@@ -12,6 +12,7 @@ import { simulationResultsService } from "@/services/simulationResultsService";
 import { ComplianceScorecard } from "@/components/ComplianceScorecard";
 import { RegulatoryFramework } from "@/components/RegulatoryFramework";
 import { ComplianceMetrics } from "@/components/ComplianceMetrics";
+import { formatPercentage } from "@/utils/formatters";
 import type { LogEntry, SimulationMetrics } from "@/types/simulation";
 
 const Results = () => {
@@ -135,7 +136,7 @@ const Results = () => {
   };
 
   const successRate = logs.length > 0 
-    ? ((logs.filter(log => log.outcome.toLowerCase().includes('success')).length / logs.length) * 100).toFixed(1)
+    ? formatPercentage((logs.filter(log => log.outcome.toLowerCase().includes('success')).length / logs.length) * 100, false)
     : '0';
 
   return (
@@ -293,7 +294,7 @@ const Results = () => {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) => `${name} ${formatPercentage(percent * 100)}`}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"

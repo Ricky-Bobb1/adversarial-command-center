@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Shield, CheckCircle, AlertTriangle, XCircle, HelpCircle, TrendingUp, TrendingDown, Users, Lock, Monitor, Activity } from "lucide-react";
+import { formatPercentage } from "@/utils/formatters";
 import type { LogEntry } from "@/types/simulation";
 
 interface ComplianceScorecardProps {
@@ -149,7 +150,7 @@ export const ComplianceScorecard = ({ logs }: ComplianceScorecardProps) => {
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border">
               <div className="flex flex-col items-center gap-3">
                 <div className="text-6xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  {overallScore}%
+                  {formatPercentage(overallScore)}
                 </div>
                 <Badge className={`${getStatusColor(overallScore >= 90 ? 'excellent' : overallScore >= 80 ? 'good' : overallScore >= 70 ? 'needs-improvement' : 'critical')} text-lg px-4 py-2`}>
                   {overallStatus.label}
@@ -179,7 +180,7 @@ export const ComplianceScorecard = ({ logs }: ComplianceScorecardProps) => {
                     </Tooltip>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl font-bold">{metric.score}%</span>
+                    <span className="text-2xl font-bold">{formatPercentage(metric.score)}</span>
                     {getStatusIcon(metric.status)}
                     <Badge variant="outline" className={getStatusColor(metric.status)}>
                       {metric.status.replace('-', ' ')}
