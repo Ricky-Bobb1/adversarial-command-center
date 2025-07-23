@@ -8,19 +8,26 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useAppState, type HospitalNode } from "@/contexts/AppStateContext";
-import { SimulationReadinessCheck } from "@/components/SimulationReadinessCheck";
+import { fetchMockData, postToMockApi, mockApiEndpoints } from "@/utils/mockApi";
+
+interface Node {
+  id: string;
+  name: string;
+  type: string;
+  services: string[];
+  vulnerabilities: string;
+  capabilities: string;
+}
+
+interface NodesData {
+  nodes: Node[];
+}
 
 const Setup = () => {
   const { toast } = useToast();
-  const { 
-    state: { hospitalNodes: nodes, isLoading }, 
-    setHospitalNodes, 
-    addHospitalNode, 
-    updateHospitalNode, 
-    removeHospitalNode 
-  } = useAppState();
-  const [editingNode, setEditingNode] = useState<HospitalNode | null>(null);
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [editingNode, setEditingNode] = useState<Node | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -30,14 +37,28 @@ const Setup = () => {
     capabilities: ""
   });
 
-  const nodeTypes = [
-    { value: "Human", label: "Human (Person)", description: "Doctors, nurses, staff members" },
-    { value: "Software", label: "Software (Asset)", description: "EHR systems, databases, applications" }, 
-    { value: "Hardware", label: "Hardware (Asset)", description: "Medical devices, servers, workstations" }
-  ];
+  const nodeTypes = ["Human", "Software", "Hardware"];
 
-  // Note: State is now managed by AppStateContext and automatically 
-  // loads from localStorage on app initialization
+  // Load initial data from mock API
+  useEffect(() => {
+    const loadNodes = async () => {
+      try {
+        setIsLoading(true);
+        const data = await fetchMockData<NodesData>('nodes');
+        setNodes(data.nodes);
+      } catch (error) {
+        toast({
+          title: "Failed to Load Data",
+          description: "Could not load existing node configurations",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadNodes();
+  }, [toast]);
 
   const resetForm = () => {
     setFormData({
@@ -73,49 +94,33 @@ const Setup = () => {
   const addNode = () => {
     if (!validateForm()) return;
 
-    // Enhanced validation for backend compatibility
-    if (formData.name.length < 3) {
-      toast({
-        title: "Validation Error",
-        description: "Node name must be at least 3 characters long",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const newNode: HospitalNode = {
-      id: editingNode?.id || Date.now().toString(),
-      name: formData.name.trim(),
+    const newNode: Node = {
+      id: Date.now().toString(),
+      name: formData.name,
       type: formData.type,
-      services: formData.services ? formData.services.split(',').map(s => s.trim()).filter(s => s.length > 0) : [],
-      vulnerabilities: formData.vulnerabilities.trim(),
-      capabilities: formData.capabilities.trim()
+      services: formData.services ? formData.services.split(',').map(s => s.trim()) : [],
+      vulnerabilities: formData.vulnerabilities,
+      capabilities: formData.capabilities
     };
 
     if (editingNode) {
-      updateHospitalNode(editingNode.id, {
-        name: newNode.name,
-        type: newNode.type,
-        services: newNode.services,
-        vulnerabilities: newNode.vulnerabilities,
-        capabilities: newNode.capabilities
-      });
+      setNodes(nodes.map(node => node.id === editingNode.id ? { ...newNode, id: editingNode.id } : node));
       toast({
         title: "Node Updated",
-        description: `Node "${newNode.name}" has been updated and will be available for simulations`,
+        description: `Node "${formData.name}" has been updated successfully`,
       });
     } else {
-      addHospitalNode(newNode);
+      setNodes([...nodes, newNode]);
       toast({
-        title: "Node Added", 
-        description: `Node "${newNode.name}" has been added to your hospital network`,
+        title: "Node Added",
+        description: `Node "${formData.name}" has been added successfully`,
       });
     }
 
     resetForm();
   };
 
-  const editNode = (node: HospitalNode) => {
+  const editNode = (node: Node) => {
     setFormData({
       name: node.name,
       type: node.type,
@@ -127,7 +132,7 @@ const Setup = () => {
   };
 
   const removeNode = (id: string) => {
-    removeHospitalNode(id);
+    setNodes(nodes.filter(node => node.id !== id));
     toast({
       title: "Node Removed",
       description: "Node has been removed from configuration",
@@ -146,16 +151,16 @@ const Setup = () => {
 
     try {
       setIsSaving(true);
+      await postToMockApi(mockApiEndpoints.nodes, { nodes });
       
-      // State is automatically persisted to localStorage by AppStateContext
       toast({
         title: "Configuration Saved",
-        description: `Successfully saved configuration with ${nodes.length} nodes. These will be used in simulations.`,
+        description: `Successfully saved configuration with ${nodes.length} nodes`,
       });
     } catch (error) {
       toast({
-        title: "Save Error", 
-        description: "Failed to save configuration. Please try again.",
+        title: "Save Failed",
+        description: "Failed to save node configuration",
         variant: "destructive",
       });
     } finally {
@@ -177,16 +182,8 @@ const Setup = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Hospital Network Setup</h1>
-        <p className="text-gray-600 mt-2">
-          Configure your hospital infrastructure nodes for cybersecurity simulation. 
-          These will be converted to SimModel format for backend processing.
-        </p>
-        <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <p className="text-sm text-blue-800">
-            <strong>Node Types:</strong> Human nodes become "Person" entities, while Software/Hardware become "Asset" entities in the simulation model.
-          </p>
-        </div>
+        <h1 className="text-3xl font-bold text-gray-900">Setup - Hospital Infrastructure</h1>
+        <p className="text-gray-600 mt-2">Model your hospital's infrastructure by defining nodes and their configurations</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -218,12 +215,9 @@ const Setup = () => {
                   <SelectValue placeholder="Select node type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {nodeTypes.map((nodeType) => (
-                    <SelectItem key={nodeType.value} value={nodeType.value}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{nodeType.label}</span>
-                        <span className="text-xs text-gray-500">{nodeType.description}</span>
-                      </div>
+                  {nodeTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -290,9 +284,6 @@ const Setup = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Simulation Readiness Check */}
-      <SimulationReadinessCheck />
 
       {/* Nodes Table */}
       {nodes.length > 0 && (

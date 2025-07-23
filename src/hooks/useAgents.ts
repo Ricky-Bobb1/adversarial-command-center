@@ -1,20 +1,20 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { unifiedApiService } from '../services/unifiedApiService';
+import { agentService } from '../services/agentService';
 import { useToast } from './use-toast';
 import type { CreateAgentRequest, UpdateAgentRequest } from '../types/agent';
 
 export const useAgents = () => {
   return useQuery({
     queryKey: ['agents'],
-    queryFn: unifiedApiService.getAgents,
+    queryFn: agentService.getAgents,
   });
 };
 
 export const useAgent = (agentId: string) => {
   return useQuery({
     queryKey: ['agent', agentId],
-    queryFn: () => unifiedApiService.getAgent(agentId),
+    queryFn: () => agentService.getAgent(agentId),
     enabled: !!agentId,
   });
 };
@@ -22,7 +22,7 @@ export const useAgent = (agentId: string) => {
 export const useAgentsBySimulation = (simulationId: string) => {
   return useQuery({
     queryKey: ['agents', 'simulation', simulationId],
-    queryFn: () => unifiedApiService.getAgentsBySimulation(simulationId),
+    queryFn: () => agentService.getAgentsBySimulation(simulationId),
     enabled: !!simulationId,
   });
 };
@@ -33,7 +33,7 @@ export const useCreateAgent = () => {
 
   return useMutation({
     mutationFn: (request: CreateAgentRequest) => 
-      unifiedApiService.createAgent(request),
+      agentService.createAgent(request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
       toast({
@@ -57,7 +57,7 @@ export const useUpdateAgent = () => {
 
   return useMutation({
     mutationFn: ({ agentId, request }: { agentId: string; request: UpdateAgentRequest }) =>
-      unifiedApiService.updateAgent(agentId, request),
+      agentService.updateAgent(agentId, request),
     onSuccess: (_, { agentId }) => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
       queryClient.invalidateQueries({ queryKey: ['agent', agentId] });

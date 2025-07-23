@@ -1,81 +1,34 @@
 
 {
-  "simulations": [
-    {
-      "id": "sim_001",
-      "scenario": "healthcare-apt-simulation",
-      "status": "completed",
-      "created_at": "2024-12-20T10:00:00Z",
-      "completed_at": "2024-12-20T10:45:00Z",
-      "duration_minutes": 45,
-      "nodes_compromised": 4,
-      "vulnerabilities_exploited": 6,
-      "detection_rate": 75,
-      "response_time_avg": 8.5,
-      "compliance_score": 82,
-      "summary": "Advanced persistent threat simulation targeting healthcare infrastructure. Red team successfully compromised EMR database and MRI workstation through SQL injection and social engineering. Blue team detected 75% of attacks with average response time of 8.5 minutes."
-    },
-    {
-      "id": "sim_002", 
-      "scenario": "ransomware-response-drill",
-      "status": "completed",
-      "created_at": "2024-12-20T14:00:00Z",
-      "completed_at": "2024-12-20T14:30:00Z", 
-      "duration_minutes": 30,
-      "nodes_compromised": 3,
-      "vulnerabilities_exploited": 4,
-      "detection_rate": 90,
-      "response_time_avg": 5.2,
-      "compliance_score": 95,
-      "summary": "Ransomware attack simulation with focus on rapid detection and containment. Blue team successfully contained the attack before critical systems were affected, demonstrating effective incident response procedures."
-    },
-    {
-      "id": "sim_003",
-      "scenario": "medical-device-compromise", 
-      "status": "running",
-      "created_at": "2024-12-20T15:30:00Z",
-      "duration_minutes": 25,
-      "nodes_compromised": 2,
-      "vulnerabilities_exploited": 3,
-      "detection_rate": 60,
-      "response_time_avg": 12.1,
-      "compliance_score": 78,
-      "summary": "Ongoing simulation targeting medical devices including MRI workstation and pharmacy systems. Currently testing IoMT (Internet of Medical Things) security controls."
-    }
-  ],
-  "demo_metrics": {
+  "metrics": {
     "timeToDetect": "4.2",
     "redScore": 75,
     "blueScore": 68,
-    "nodesCompromised": 4,
-    "avgComplianceScore": 85,
-    "criticalVulnerabilities": 8,
-    "totalAgents": 6
+    "nodesCompromised": 3
   },
-  "demo_timeline": [
-    { "time": "00:30", "redActions": 2, "blueActions": 1, "event": "Initial reconnaissance on EMR Database" },
-    { "time": "01:00", "redActions": 3, "blueActions": 2, "event": "SQL injection attempt detected" },
-    { "time": "01:30", "redActions": 1, "blueActions": 4, "event": "Blue team isolates affected systems" },
-    { "time": "02:00", "redActions": 4, "blueActions": 3, "event": "Lateral movement to MRI workstation" },
-    { "time": "02:30", "redActions": 2, "blueActions": 5, "event": "Phishing attack on Dr. Wilson" },
-    { "time": "03:00", "redActions": 3, "blueActions": 2, "event": "Privilege escalation successful" },
-    { "time": "03:30", "redActions": 1, "blueActions": 3, "event": "Firewall rules updated" },
-    { "time": "04:00", "redActions": 2, "blueActions": 4, "event": "Data exfiltration blocked" }
+  "timeline": [
+    { "time": "00:30", "redActions": 2, "blueActions": 1 },
+    { "time": "01:00", "redActions": 3, "blueActions": 2 },
+    { "time": "01:30", "redActions": 1, "blueActions": 4 },
+    { "time": "02:00", "redActions": 4, "blueActions": 3 },
+    { "time": "02:30", "redActions": 2, "blueActions": 5 },
+    { "time": "03:00", "redActions": 3, "blueActions": 2 },
+    { "time": "03:30", "redActions": 1, "blueActions": 3 },
+    { "time": "04:00", "redActions": 2, "blueActions": 4 }
   ],
-  "demo_compromised_nodes": [
-    { "node": "EMR Database Server", "attacks": 12, "status": "compromised", "severity": "critical" },
-    { "node": "MRI Machine Workstation", "attacks": 8, "status": "compromised", "severity": "high" },
-    { "node": "Pharmacy Management System", "attacks": 6, "status": "vulnerable", "severity": "medium" },
-    { "node": "Dr. Sarah Wilson", "attacks": 4, "status": "targeted", "severity": "medium" },
-    { "node": "Network Firewall Gateway", "attacks": 3, "status": "secured", "severity": "low" },
-    { "node": "Patient Portal Web Server", "attacks": 5, "status": "monitored", "severity": "medium" }
+  "targetedNodes": [
+    { "node": "EMR Database", "attacks": 12 },
+    { "node": "MRI Workstation", "attacks": 8 },
+    { "node": "Pharmacy System", "attacks": 6 },
+    { "node": "Dr. Wilson", "attacks": 4 },
+    { "node": "Lab Equipment", "attacks": 3 }
   ],
-  "demo_attack_vectors": [
-    { "type": "SQL Injection", "count": 8, "success_rate": 62, "targets": ["EMR Database", "Patient Portal"] },
-    { "type": "Social Engineering", "count": 6, "success_rate": 33, "targets": ["Dr. Wilson"] },
-    { "type": "Privilege Escalation", "count": 5, "success_rate": 80, "targets": ["EMR Database", "Pharmacy System"] },
-    { "type": "Lateral Movement", "count": 4, "success_rate": 75, "targets": ["MRI Workstation", "Network"] },
-    { "type": "Remote Code Execution", "count": 7, "success_rate": 57, "targets": ["MRI Workstation", "Patient Portal"] },
-    { "type": "Credential Harvesting", "count": 3, "success_rate": 66, "targets": ["Multiple Systems"] }
+  "attackTypes": [
+    { "type": "SQL Injection", "count": 8 },
+    { "type": "Phishing", "count": 6 },
+    { "type": "Privilege Escalation", "count": 5 },
+    { "type": "Lateral Movement", "count": 4 },
+    { "type": "Data Exfiltration", "count": 3 },
+    { "type": "Malware", "count": 2 }
   ]
 }

@@ -1,76 +1,12 @@
+
 {
-  "agents": [
-    {
-      "id": "red_agent_001",
-      "name": "Advanced Persistent Threat Simulator",
-      "model_id": "gpt-4-turbo-preview",
-      "provider": "OpenAI",
-      "platform": "openai",
-      "host": "api.openai.com",
-      "port": 443,
-      "tools": ["nmap", "sqlmap", "metasploit", "social_engineer", "lateral_movement"],
-      "capabilities": ["reconnaissance", "exploitation", "persistence", "lateral_movement", "data_exfiltration"],
-      "description": "Sophisticated red team agent capable of multi-stage attacks, social engineering, and advanced persistent threat simulation"
-    },
-    {
-      "id": "red_agent_002", 
-      "name": "Ransomware Attack Simulator",
-      "model_id": "claude-3-5-sonnet-20241022",
-      "provider": "Anthropic",
-      "platform": "bedrock",
-      "host": "bedrock-runtime.us-east-1.amazonaws.com",
-      "port": 443,
-      "tools": ["file_encryption", "network_scanner", "privilege_escalator", "persistence_tools"],
-      "capabilities": ["ransomware_deployment", "encryption", "network_propagation", "backup_destruction"],
-      "description": "Specialized agent for simulating ransomware attacks, focusing on encryption, propagation, and recovery disruption"
-    },
-    {
-      "id": "blue_agent_001",
-      "name": "Cyber Defense Coordinator", 
-      "model_id": "gpt-4-turbo-preview",
-      "provider": "OpenAI", 
-      "platform": "azure_openai",
-      "host": "your-resource.openai.azure.com",
-      "port": 443,
-      "tools": ["siem_analysis", "incident_response", "threat_hunting", "forensics", "containment"],
-      "capabilities": ["anomaly_detection", "threat_analysis", "incident_response", "system_hardening", "recovery_coordination"],
-      "description": "Advanced blue team agent specializing in threat detection, incident response, and coordinated defense strategies"
-    },
-    {
-      "id": "blue_agent_002",
-      "name": "Network Security Monitor",
-      "model_id": "claude-3-5-haiku-20241022", 
-      "provider": "Anthropic",
-      "platform": "bedrock",
-      "host": "bedrock-runtime.us-west-2.amazonaws.com", 
-      "port": 443,
-      "tools": ["network_monitor", "ids_analysis", "traffic_analyzer", "firewall_manager"],
-      "capabilities": ["network_monitoring", "intrusion_detection", "traffic_analysis", "access_control"],
-      "description": "Fast-response network security agent focused on real-time monitoring and automated threat response"
-    },
-    {
-      "id": "neutral_agent_001",
-      "name": "Compliance Auditor",
-      "model_id": "gpt-4o-mini",
-      "provider": "OpenAI",
-      "platform": "openai",
-      "host": "api.openai.com", 
-      "port": 443,
-      "tools": ["compliance_scanner", "policy_checker", "vulnerability_assessor", "audit_reporter"],
-      "capabilities": ["hipaa_compliance", "vulnerability_assessment", "policy_validation", "audit_reporting"],
-      "description": "Independent auditor agent that evaluates both red and blue team activities against healthcare compliance requirements"
-    },
-    {
-      "id": "neutral_agent_002",
-      "name": "Simulation Orchestrator", 
-      "model_id": "o3-2025-04-16",
-      "provider": "OpenAI",
-      "platform": "openai",
-      "host": "api.openai.com",
-      "port": 443,
-      "tools": ["scenario_manager", "metrics_collector", "event_coordinator", "report_generator"],
-      "capabilities": ["scenario_management", "performance_metrics", "event_orchestration", "comprehensive_reporting"],
-      "description": "Advanced reasoning agent that orchestrates complex multi-agent scenarios and provides detailed analysis of simulation outcomes"
-    }
-  ]
+  "redAgent": {
+    "model": "GPT-4 Turbo",
+    "strategies": ["SQL Injection", "Phishing", "Privilege Escalation", "Lateral Movement", "Data Exfiltration"]
+  },
+  "blueAgent": {
+    "model": "Claude 3.5 Sonnet", 
+    "strategies": ["Anomaly Detection", "Access Control", "Network Monitoring", "Intrusion Detection", "Data Loss Prevention"]
+  },
+  "humanInTheLoop": true
 }

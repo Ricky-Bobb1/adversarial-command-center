@@ -1,6 +1,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { unifiedApiService } from '../services/unifiedApiService';
+import { simulationService } from '../services/simulationService';
 import { useToast } from './use-toast';
 import { useErrorHandler } from './useErrorHandler';
 import { cacheService, cacheKeys } from '../services/cacheService';
@@ -15,7 +15,7 @@ export const useSimulations = () => {
     queryFn: async () => {
       return cacheService.getOrFetch(
         cacheKeys.simulations(),
-        () => unifiedApiService.listSimulations(),
+        () => simulationService.listSimulations(),
         2 * 60 * 1000 // 2 minutes cache
       );
     },
@@ -33,7 +33,7 @@ export const useSimulation = (simulationId: string) => {
     queryFn: async () => {
       return cacheService.getOrFetch(
         cacheKeys.simulation(simulationId),
-        () => unifiedApiService.getSimulationResult(simulationId),
+        () => simulationService.getSimulationResult(simulationId),
         5 * 60 * 1000 // 5 minutes cache
       );
     },
@@ -49,7 +49,9 @@ export const useSimulationStatus = (simulationId: string, enabled = true) => {
 
   return useQuery({
     queryKey: ['simulation-status', simulationId],
-    queryFn: () => unifiedApiService.getSimulationStatus(simulationId),
+    queryFn: () => simulationService.getSimulationStatus(simulationId, {
+      requestId: `status-${simulationId}`,
+    }),
     enabled: !!simulationId && enabled,
     refetchInterval: (query) => {
       // Poll every 2 seconds if simulation is running
@@ -68,7 +70,7 @@ export const useCreateSimulation = () => {
 
   return useMutation({
     mutationFn: (request: CreateSimulationRequest) => 
-      unifiedApiService.createSimulation(request),
+      simulationService.createSimulation(request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['simulations'] });
       cacheService.invalidatePattern('simulation');
@@ -90,7 +92,7 @@ export const useStartSimulation = () => {
 
   return useMutation({
     mutationFn: (simulationId: string) => 
-      unifiedApiService.startSimulation(simulationId),
+      simulationService.startSimulation(simulationId),
     onSuccess: (_, simulationId) => {
       queryClient.invalidateQueries({ queryKey: ['simulation-status', simulationId] });
       cacheService.delete(cacheKeys.simulationStatus(simulationId));

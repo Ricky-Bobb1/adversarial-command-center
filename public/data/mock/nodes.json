@@ -1,265 +1,37 @@
+
 {
   "nodes": [
     {
       "id": "node_001",
       "name": "EMR Database Server",
-      "node_type": "Asset",
-      "properties": [
-        {"key": "type", "value": "Software"},
-        {"key": "os", "value": "Ubuntu 20.04"},
-        {"key": "location", "value": "Data Center"},
-        {"key": "criticality", "value": "high"}
-      ],
-      "services": [
-        {"name": "mysql", "description": "Primary database service"},
-        {"name": "apache", "description": "Web server for EMR application"},
-        {"name": "emr-system", "description": "Electronic Medical Records system"}
-      ],
-      "resources": [
-        {"name": "patient_database", "kind": "database", "metadata": {"encrypted": true, "records": 50000}},
-        {"name": "admin_panel", "kind": "endpoint", "metadata": {"path": "/admin", "auth_required": true}}
-      ],
-      "vulnerabilities": [
-        {
-          "id": "vuln_001",
-          "type": "software",
-          "subtype": "RemoteCodeExecution",
-          "description": "SQL injection vulnerability in patient search functionality",
-          "vclass": "exposed",
-          "outcome_type": "CustomerData",
-          "outcome_params": {"data_type": "patient_records", "severity": "high"},
-          "cost": 2.0,
-          "granted_access": "admin",
-          "prereq": null
-        },
-        {
-          "id": "vuln_002", 
-          "type": "software",
-          "subtype": "PrivilegeEscalation",
-          "description": "Weak authentication allows privilege escalation",
-          "vclass": "configured",
-          "outcome_type": "AdminEscalation",
-          "outcome_params": {"level": "admin"},
-          "cost": 1.5,
-          "granted_access": "admin",
-          "prereq": ["user_creds"]
-        }
-      ],
-      "firewalls": [
-        {"type": "classic linux firewall", "resource": "external_access"}
-      ],
-      "importance_score": 5.0,
-      "reward_score": 35.0,
-      "credentials": ["admin_db", "emr_service"]
+      "type": "Software",
+      "services": ["MySQL", "Apache", "EMR System"],
+      "vulnerabilities": "CVE-2024-1234, CVE-2023-5678",
+      "capabilities": "Stores patient records, medical histories, and treatment plans. High-value target with administrative access to all patient data."
     },
     {
-      "id": "node_002",
-      "name": "MRI Machine Workstation", 
-      "node_type": "Asset",
-      "properties": [
-        {"key": "type", "value": "Hardware"},
-        {"key": "os", "value": "Windows 10"},
-        {"key": "location", "value": "Radiology Department"},
-        {"key": "device_type", "value": "medical_imaging"}
-      ],
-      "services": [
-        {"name": "dicom", "description": "DICOM image processing service"},
-        {"name": "rdp", "description": "Remote Desktop Protocol"},
-        {"name": "file_share", "description": "Network file sharing"}
-      ],
-      "resources": [
-        {"name": "mri_images", "kind": "file", "metadata": {"format": "DICOM", "phi_data": true}},
-        {"name": "control_interface", "kind": "endpoint", "metadata": {"type": "machine_control"}}
-      ],
-      "vulnerabilities": [
-        {
-          "id": "vuln_003",
-          "type": "network",
-          "subtype": "RemoteCodeExecution", 
-          "description": "Unpatched RDP vulnerability allows remote access",
-          "vclass": "exposed",
-          "outcome_type": "LateralMove",
-          "outcome_params": {"target_network": "medical_devices"},
-          "cost": 1.0,
-          "granted_access": "user",
-          "prereq": null
-        }
-      ],
-      "firewalls": [],
-      "importance_score": 3.0,
-      "reward_score": 20.0,
-      "credentials": ["mri_operator"]
+      "id": "node_002", 
+      "name": "MRI Machine Workstation",
+      "type": "Hardware",
+      "services": ["DICOM", "Windows 10", "Remote Desktop"],
+      "vulnerabilities": "CVE-2024-2345",
+      "capabilities": "Controls MRI machine operations, accesses imaging data, connected to PACS network."
     },
     {
       "id": "node_003",
       "name": "Dr. Sarah Wilson",
-      "node_type": "Person", 
-      "properties": [
-        {"key": "type", "value": "Human"},
-        {"key": "role", "value": "Senior Physician"},
-        {"key": "department", "value": "Cardiology"},
-        {"key": "access_level", "value": "high"}
-      ],
-      "services": [
-        {"name": "email", "description": "Corporate email access"},
-        {"name": "vpn", "description": "VPN access to hospital systems"},
-        {"name": "clinical_systems", "description": "Access to multiple clinical applications"}
-      ],
-      "resources": [
-        {"name": "email_account", "kind": "communication", "metadata": {"domain": "hospital.org"}},
-        {"name": "vpn_profile", "kind": "network", "metadata": {"privileges": "elevated"}}
-      ],
-      "vulnerabilities": [
-        {
-          "id": "vuln_004",
-          "type": "social",
-          "subtype": "SocialEngineering",
-          "description": "Susceptible to targeted phishing attacks",
-          "vclass": "exposed", 
-          "outcome_type": "LeakedCredentials",
-          "outcome_params": {"credential_type": "physician_access"},
-          "cost": 0.5,
-          "granted_access": "user",
-          "prereq": null
-        }
-      ],
-      "firewalls": [],
-      "importance_score": 4.0,
-      "reward_score": 25.0,
-      "credentials": ["physician_portal", "vpn_access"]
+      "type": "Human",
+      "services": ["Email", "VPN Access", "Clinical Systems"],
+      "vulnerabilities": "Social engineering susceptible",
+      "capabilities": "Senior physician with elevated privileges, access to restricted patient data and administrative functions."
     },
     {
       "id": "node_004",
-      "name": "Pharmacy Management System",
-      "node_type": "Asset",
-      "properties": [
-        {"key": "type", "value": "Software"},
-        {"key": "vendor", "value": "PharmaTech Solutions"},
-        {"key": "version", "value": "3.2.1"},
-        {"key": "compliance", "value": "HIPAA"}
-      ],
-      "services": [
-        {"name": "pharmacy_db", "description": "Prescription database"},
-        {"name": "inventory_system", "description": "Drug inventory management"},
-        {"name": "dispensing_control", "description": "Automated dispensing control"}
-      ],
-      "resources": [
-        {"name": "prescription_db", "kind": "database", "metadata": {"drug_schedules": "I-V", "patient_data": true}},
-        {"name": "inventory_api", "kind": "endpoint", "metadata": {"controlled_substances": true}}
-      ],
-      "vulnerabilities": [
-        {
-          "id": "vuln_005",
-          "type": "software", 
-          "subtype": "Misconfiguration",
-          "description": "Default credentials on administrative interface",
-          "vclass": "configured",
-          "outcome_type": "PrivilegeEscalation",
-          "outcome_params": {"level": "admin", "system": "pharmacy"},
-          "cost": 0.8,
-          "granted_access": "admin",
-          "prereq": null
-        }
-      ],
-      "firewalls": [
-        {"type": "classic linux firewall", "resource": "network_access"}
-      ],
-      "importance_score": 3.5,
-      "reward_score": 22.0,
-      "credentials": ["pharmacy_admin"]
-    },
-    {
-      "id": "node_005", 
-      "name": "Network Firewall Gateway",
-      "node_type": "Asset",
-      "properties": [
-        {"key": "type", "value": "Hardware"},
-        {"key": "model", "value": "FortiGate 300E"},
-        {"key": "firmware", "value": "7.2.1"},
-        {"key": "location", "value": "Network Operations Center"}
-      ],
-      "services": [
-        {"name": "firewall", "description": "Network traffic filtering"},
-        {"name": "vpn_gateway", "description": "VPN connection management"},
-        {"name": "intrusion_detection", "description": "Network intrusion detection"}
-      ],
-      "resources": [
-        {"name": "firewall_rules", "kind": "configuration", "metadata": {"rule_count": 150}},
-        {"name": "vpn_configs", "kind": "configuration", "metadata": {"active_tunnels": 25}}
-      ],
-      "vulnerabilities": [
-        {
-          "id": "vuln_006",
-          "type": "network",
-          "subtype": "Misconfiguration",
-          "description": "Overly permissive firewall rules allow unnecessary traffic",
-          "vclass": "configured",
-          "outcome_type": "LateralMove", 
-          "outcome_params": {"bypass_method": "firewall_rules"},
-          "cost": 1.2,
-          "granted_access": "network",
-          "prereq": ["network_access"]
-        }
-      ],
-      "firewalls": [
-        {"type": "classic linux firewall", "resource": "management_interface"}
-      ],
-      "importance_score": 4.5,
-      "reward_score": 30.0,
-      "credentials": ["firewall_admin"]
-    },
-    {
-      "id": "node_006",
-      "name": "Patient Portal Web Server",
-      "node_type": "Asset", 
-      "properties": [
-        {"key": "type", "value": "Software"},
-        {"key": "framework", "value": "ASP.NET Core"},
-        {"key": "database", "value": "SQL Server 2019"},
-        {"key": "ssl_enabled", "value": "true"}
-      ],
-      "services": [
-        {"name": "web_server", "description": "Patient portal web application"},
-        {"name": "api_service", "description": "RESTful API for mobile apps"},
-        {"name": "authentication", "description": "Patient authentication service"}
-      ],
-      "resources": [
-        {"name": "patient_portal", "kind": "endpoint", "metadata": {"public_facing": true}},
-        {"name": "mobile_api", "kind": "endpoint", "metadata": {"oauth_enabled": true}},
-        {"name": "session_store", "kind": "database", "metadata": {"session_timeout": 30}}
-      ],
-      "vulnerabilities": [
-        {
-          "id": "vuln_007",
-          "type": "software",
-          "subtype": "RemoteCodeExecution",
-          "description": "Cross-site scripting vulnerability in patient messaging",
-          "vclass": "exposed",
-          "outcome_type": "CustomerData",
-          "outcome_params": {"data_type": "patient_messages", "exposure": "xss"},
-          "cost": 1.3,
-          "granted_access": "user",
-          "prereq": null
-        },
-        {
-          "id": "vuln_008",
-          "type": "software", 
-          "subtype": "CredentialLeak",
-          "description": "Session tokens exposed in server logs",
-          "vclass": "discovered",
-          "outcome_type": "LeakedCredentials",
-          "outcome_params": {"credential_type": "session_tokens"},
-          "cost": 0.7,
-          "granted_access": "user",
-          "prereq": ["log_access"]
-        }
-      ],
-      "firewalls": [
-        {"type": "classic linux firewall", "resource": "web_traffic"}
-      ],
-      "importance_score": 3.8,
-      "reward_score": 28.0,
-      "credentials": ["portal_service", "api_key"]
+      "name": "Pharmacy System",
+      "type": "Software", 
+      "services": ["Pharmacy DB", "Prescription System", "Inventory Management"],
+      "vulnerabilities": "CVE-2024-3456",
+      "capabilities": "Manages drug inventory, prescription processing, and medication dispensing controls."
     }
   ]
 }

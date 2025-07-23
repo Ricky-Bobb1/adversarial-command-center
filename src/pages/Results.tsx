@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +16,6 @@ import type { LogEntry, SimulationMetrics } from "@/types/simulation";
 
 const Results = () => {
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [latestResult, setLatestResult] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -68,7 +66,7 @@ const Results = () => {
               <p className="text-gray-600 mb-4">
                 Run a simulation first to see results here. Go to the Run Simulation page to start.
               </p>
-              <Button onClick={() => navigate('/run')}>
+              <Button onClick={() => window.location.href = '/run'}>
                 Run Simulation
               </Button>
             </div>
@@ -253,8 +251,8 @@ const Results = () => {
                 <CardDescription>Actions over simulation progression</CardDescription>
               </CardHeader>
               <CardContent>
-                <ChartContainer config={chartConfig}>
-                  <ResponsiveContainer width="100%" height={300}>
+                <ChartContainer config={chartConfig} className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={timelineData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="time" />
@@ -287,25 +285,27 @@ const Results = () => {
                 <CardDescription>Breakdown of red team actions</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={attackTypesData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {attackTypesData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={attackTypesData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {attackTypesData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
               </CardContent>
             </Card>
           </div>

@@ -28,17 +28,12 @@ class Environment {
     const isProduction = mode === 'production';
     const isTest = mode === 'test';
 
-    // Use the new production API endpoint
-    const defaultApiUrl = import.meta.env.VITE_API_BASE_URL || 
-      'https://4ao182xl79.execute-api.us-east-1.amazonaws.com/alpha';
-
     return {
       isDevelopment,
       isProduction,
       isTest,
-      apiBaseUrl: defaultApiUrl,
-      enableMockApi: import.meta.env.VITE_ENABLE_MOCK_API === 'true' || 
-        (isDevelopment && !import.meta.env.VITE_API_BASE_URL && false), // Default to real API
+      apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
+      enableMockApi: isDevelopment && !import.meta.env.VITE_API_BASE_URL,
       logLevel: (import.meta.env.VITE_LOG_LEVEL as any) || (isDevelopment ? 'debug' : 'info'),
       cacheTimeout: parseInt(import.meta.env.VITE_CACHE_TIMEOUT || '300000'), // 5 minutes default
       retryAttempts: parseInt(import.meta.env.VITE_RETRY_ATTEMPTS || '3'),

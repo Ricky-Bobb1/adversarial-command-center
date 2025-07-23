@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -5,50 +6,16 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings as SettingsIcon, User, Shield, Bell, Database, Globe, Moon, Sun, RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Settings as SettingsIcon, User, Shield, Bell, Database, Globe, Moon, Sun, RefreshCw } from "lucide-react";
+import { useState } from "react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useToast } from "@/hooks/use-toast";
-import { environment } from "@/utils/environment";
-import { unifiedApiService } from "@/services/unifiedApiService";
 
 const Settings = () => {
-  const [apiEndpoint, setApiEndpoint] = useState("https://4ao182xl79.execute-api.us-east-1.amazonaws.com/alpha");
-  const [demoMode, setDemoMode] = useState(environment.enableMockApi);
-  const [isTestingApi, setIsTestingApi] = useState(false);
-  const [apiStatus, setApiStatus] = useState<'unknown' | 'success' | 'error'>('unknown');
+  const [apiEndpoint, setApiEndpoint] = useState("https://api.adversarial-ai.com/v1");
+  const [demoMode, setDemoMode] = useState(true);
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
-
-  useEffect(() => {
-    setApiEndpoint(environment.apiBaseUrl);
-    setDemoMode(environment.enableMockApi);
-  }, []);
-
-  const testApiConnection = async () => {
-    setIsTestingApi(true);
-    setApiStatus('unknown');
-    
-    try {
-      console.log('[API Test] Testing connection to:', environment.apiBaseUrl);
-      await unifiedApiService.healthCheck();
-      setApiStatus('success');
-      toast({
-        title: "API Connection Successful",
-        description: "Successfully connected to the Adversa API backend.",
-      });
-    } catch (error: any) {
-      console.error('[API Test] Connection failed:', error);
-      setApiStatus('error');
-      toast({
-        title: "API Connection Failed",
-        description: `Unable to connect to the API: ${error.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsTestingApi(false);
-    }
-  };
 
   const handleResetConfig = () => {
     toast({
@@ -59,8 +26,8 @@ const Settings = () => {
 
   const handleSaveApiConfig = () => {
     toast({
-      title: "API Configuration Updated",
-      description: "Please refresh the page for changes to take effect.",
+      title: "API Configuration Saved",
+      description: "API endpoint has been updated successfully.",
     });
   };
 
@@ -102,67 +69,25 @@ const Settings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Globe className="h-5 w-5" />
-              Production API Configuration
+              API Configuration
             </CardTitle>
-            <CardDescription>Configure connection to the Adversa FastAPI backend on AWS</CardDescription>
+            <CardDescription>Configure external API endpoints and connections</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="api-endpoint">Production API Base URL</Label>
+              <Label htmlFor="api-endpoint">API Endpoint</Label>
               <Input 
                 id="api-endpoint" 
                 value={apiEndpoint}
                 onChange={(e) => setApiEndpoint(e.target.value)}
-                placeholder="https://4ao182xl79.execute-api.us-east-1.amazonaws.com/alpha"
-                className="font-mono text-sm"
+                placeholder="https://api.adversarial-ai.com/v1"
               />
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                AWS API Gateway endpoint for the deployed FastAPI backend
+                Base URL for simulation API calls
               </p>
             </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Mock API Mode</Label>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Use simulated data for development</p>
-              </div>
-              <Switch 
-                checked={demoMode}
-                onCheckedChange={setDemoMode}
-              />
-            </div>
-
-            <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-300">
-                  Current Mode: {environment.enableMockApi ? 'Mock API' : 'Production API'}
-                </p>
-                <p className="text-xs text-blue-700 dark:text-blue-400">
-                  API Base: {environment.apiBaseUrl}
-                </p>
-              </div>
-              {apiStatus === 'success' && <CheckCircle className="h-5 w-5 text-green-600" />}
-              {apiStatus === 'error' && <AlertCircle className="h-5 w-5 text-red-600" />}
-            </div>
-            
-            <div className="flex gap-2">
-              <Button 
-                onClick={testApiConnection} 
-                disabled={isTestingApi}
-                className="flex-1"
-              >
-                {isTestingApi ? 'Testing...' : 'Test Connection'}
-              </Button>
-              <Button variant="outline" onClick={() => window.open(`${environment.apiBaseUrl}/docs`, '_blank')}>
-                Swagger UI
-              </Button>
-              <Button variant="outline" onClick={() => window.open(`${environment.apiBaseUrl}/redoc`, '_blank')}>
-                ReDoc
-              </Button>
-            </div>
-            
-            <Button onClick={handleSaveApiConfig} className="w-full" variant="secondary">
-              Save Configuration
+            <Button onClick={handleSaveApiConfig} className="w-full">
+              Save API Configuration
             </Button>
           </CardContent>
         </Card>
@@ -179,10 +104,13 @@ const Settings = () => {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Real-time Polling</Label>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Enable live simulation status updates</p>
+                <Label>Demo Mode</Label>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Use simulated data for demonstrations</p>
               </div>
-              <Switch defaultChecked />
+              <Switch 
+                checked={demoMode}
+                onCheckedChange={setDemoMode}
+              />
             </div>
             <Separator />
             <div className="space-y-2">

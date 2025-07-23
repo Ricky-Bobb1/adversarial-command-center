@@ -1,12 +1,10 @@
+
 {
   "scenarios": [
-    "healthcare-apt-simulation",
-    "ransomware-response-drill", 
-    "insider-threat-detection",
-    "medical-device-compromise",
-    "patient-data-breach-scenario",
-    "supply-chain-attack-simulation",
-    "emergency-response-cyberattack",
-    "hipaa-compliance-assessment"
+    "Hospital Network Security Assessment",
+    "Emergency Response System Test", 
+    "Patient Data Protection Scenario",
+    "Medical Device Network Penetration Test",
+    "Pharmacy System Security Evaluation"
   ]
 }
