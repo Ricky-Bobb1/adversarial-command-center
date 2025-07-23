@@ -1,4 +1,3 @@
-
 # Adversa Agentic AI - Advanced Cybersecurity Simulation Platform
 
 ## Overview
@@ -19,8 +18,212 @@ The application follows a modern React-based single-page application (SPA) archi
 
 ### Development Environment Setup
 - **Git**: Version 2.30 or higher for version control
-- **Code Editor**: Visual Studio Code recommended with TypeScript extension
+- **Visual Studio Code**: Recommended IDE with TypeScript support
 - **Terminal**: Command line interface with Node.js and npm access
+
+## Deploying the Application in Visual Studio Code
+
+This section provides comprehensive instructions for setting up and deploying the Adversa Agentic AI platform using Visual Studio Code as your development environment.
+
+### Step 1: Install Visual Studio Code
+
+1. **Download Visual Studio Code**:
+   - Visit [https://code.visualstudio.com/](https://code.visualstudio.com/)
+   - Download the appropriate version for your operating system
+   - Run the installer and follow the setup wizard
+
+2. **Verify Installation**:
+   - Open VS Code
+   - Verify installation by checking **Help > About** for version information
+
+### Step 2: Install Recommended Extensions
+
+Install the following essential extensions for optimal development experience:
+
+1. **Core Extensions**:
+   - **TypeScript and JavaScript Language Features** (Built-in)
+   - **ESLint** (`ms-vscode.vscode-eslint`)
+   - **Prettier - Code formatter** (`esbenp.prettier-vscode`)
+
+2. **Framework-Specific Extensions**:
+   - **ES7+ React/Redux/React-Native snippets** (`dsznajder.es7-react-js-snippets`)
+   - **Auto Rename Tag** (`formulahendry.auto-rename-tag`)
+   - **Bracket Pair Colorizer 2** (`coenraads.bracket-pair-colorizer-2`)
+
+3. **Styling Extensions**:
+   - **Tailwind CSS IntelliSense** (`bradlc.vscode-tailwindcss`)
+   - **PostCSS Language Support** (`csstools.postcss`)
+
+4. **Development Tools**:
+   - **GitLens** (`eamodio.gitlens`)
+   - **Thunder Client** (`rangav.vscode-thunder-client`) - For API testing
+   - **Error Lens** (`usernamehw.errorlens`)
+
+**Installation Method**:
+- Open VS Code
+- Press `Ctrl+Shift+X` (Windows/Linux) or `Cmd+Shift+X` (macOS)
+- Search for each extension and click "Install"
+
+### Step 3: Install Node.js (if not already installed)
+
+1. **Download Node.js**:
+   - Visit [https://nodejs.org/](https://nodejs.org/)
+   - Download the LTS version (recommended)
+   - Run the installer with default settings
+
+2. **Verify Installation**:
+   ```bash
+   node --version
+   npm --version
+   ```
+
+### Step 4: Clone the Repository
+
+1. **Open Terminal in VS Code**:
+   - Press `` Ctrl+` `` (Windows/Linux) or `` Cmd+` `` (macOS)
+   - Or go to **Terminal > New Terminal**
+
+2. **Clone Repository**:
+   ```bash
+   # Navigate to your desired directory
+   cd /path/to/your/projects
+
+   # Clone the repository
+   git clone <YOUR_GIT_URL>
+
+   # Navigate to project directory
+   cd adversa-agentic-ai
+   ```
+
+3. **Open Project in VS Code**:
+   ```bash
+   # Open current directory in VS Code
+   code .
+   ```
+
+### Step 5: Install Dependencies
+
+1. **Install Project Dependencies**:
+   ```bash
+   # Install all required packages
+   npm install
+
+   # Verify installation
+   npm list --depth=0
+   ```
+
+2. **Verify Package Installation**:
+   - Check that `node_modules` folder is created
+   - Ensure no critical dependency errors in the output
+
+### Step 6: Environment Configuration
+
+1. **Create Environment File** (Optional for production):
+   ```bash
+   # Create .env file in project root
+   touch .env
+   ```
+
+2. **Configure Environment Variables** (Add to `.env` if needed):
+   ```env
+   # External API Configuration (Optional)
+   VITE_API_BASE_URL=https://your-api-endpoint.com
+
+   # Logging Configuration
+   VITE_LOG_LEVEL=debug
+
+   # Caching Configuration
+   VITE_CACHE_TIMEOUT=300000
+
+   # Retry Logic
+   VITE_RETRY_ATTEMPTS=3
+   ```
+
+3. **Default Development Configuration**:
+   - Mock API enabled automatically
+   - Debug logging active
+   - Local development server on port 8080
+
+### Step 7: Running the Development Server
+
+1. **Start Development Server**:
+   ```bash
+   # Start the development server
+   npm run dev
+   ```
+
+2. **Access Application**:
+   - **Local URL**: [http://localhost:8080/](http://localhost:8080/)
+   - **Network URL**: `http://[your-ip]:8080/` (shown in terminal)
+
+3. **Development Features**:
+   - Hot module replacement for instant updates
+   - Real-time error reporting
+   - Automatic browser refresh on file changes
+
+### Step 8: Preview Production Build
+
+1. **Create Production Build**:
+   ```bash
+   # Generate optimized production build
+   npm run build
+   ```
+
+2. **Preview Local Build**:
+   ```bash
+   # Start local preview server
+   npm run preview
+   ```
+
+3. **Verify Build Output**:
+   - Check `dist/` directory for generated files
+   - Test application functionality in preview mode
+
+### Step 9: Using VS Code Development Tools
+
+1. **Integrated Terminal Usage**:
+   - Multiple terminal support: `Ctrl+Shift+` ` (Windows/Linux) or `Cmd+Shift+` ` (macOS)
+   - Split terminal view for running multiple commands
+   - Terminal history and command completion
+
+2. **Debugging Configuration**:
+   - Create `.vscode/launch.json` for debugging:
+   ```json
+   {
+     "version": "0.2.0",
+     "configurations": [
+       {
+         "name": "Launch Chrome",
+         "request": "launch",
+         "type": "node",
+         "program": "${workspaceFolder}/node_modules/.bin/vite",
+         "args": ["--port", "8080"],
+         "console": "integratedTerminal"
+       }
+     ]
+   }
+   ```
+
+3. **Workspace Settings** (`.vscode/settings.json`):
+   ```json
+   {
+     "typescript.preferences.importModuleSpecifier": "relative",
+     "editor.formatOnSave": true,
+     "editor.defaultFormatter": "esbenp.prettier-vscode",
+     "editor.codeActionsOnSave": {
+       "source.fixAll.eslint": true
+     },
+     "tailwindCSS.experimental.classRegex": [
+       ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]
+     ]
+   }
+   ```
+
+4. **Code Navigation and Features**:
+   - `Ctrl+P` (Windows/Linux) or `Cmd+P` (macOS): Quick file search
+   - `F12`: Go to definition
+   - `Shift+F12`: Find all references
+   - `Ctrl+Shift+F` (Windows/Linux) or `Cmd+Shift+F` (macOS): Global search
 
 ## Installation and Setup Instructions
 
@@ -257,3 +460,21 @@ The codebase follows React best practices with clear separation of concerns:
 - **Utils**: Utility functions and helper modules
 
 This structure ensures maintainability, testability, and scalability for future enhancements and feature additions.
+
+## Contributing
+
+This project represents a graduate-level cybersecurity simulation platform developed using modern web technologies. The codebase is structured to support academic research, professional development, and portfolio demonstration.
+
+### Development Guidelines
+- Follow TypeScript best practices for type safety
+- Maintain component modularity and reusability
+- Implement comprehensive error handling
+- Document complex business logic
+- Test critical simulation functionality
+
+### Academic and Professional Use
+This platform serves as a demonstration of advanced web application development skills, cybersecurity domain expertise, and modern frontend architecture implementation. It is suitable for:
+- Academic portfolio presentation
+- Cybersecurity research and education
+- Professional development demonstration
+- Open source contribution
